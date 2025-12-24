@@ -17,6 +17,15 @@ create table if not exists public.strategy_logs (
   created_at timestamptz not null default now()
 );
 
+-- Performance indexes (recommended)
+-- Supports quiz query patterns (type='success' AND votes>0).
+create index if not exists strategy_logs_success_votes_created_at_idx
+  on public.strategy_logs (created_at desc)
+  where type = 'success' and votes > 0;
+
+create index if not exists strategy_logs_type_votes_idx
+  on public.strategy_logs (type, votes);
+
 -- If you created the table before skill_queue existed
 alter table public.strategy_logs
   add column if not exists skill_queue jsonb not null default '[]'::jsonb;

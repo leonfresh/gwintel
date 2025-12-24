@@ -246,8 +246,6 @@ export default function CounterQuizClient() {
       const email = user?.email ?? null;
       const display = ingameName || (email ? email.split("@")[0] : null);
       setAuthDisplayName(display);
-
-      await loadLeaderboard(userId);
     };
 
     loadAuthAndScores();
@@ -263,7 +261,6 @@ export default function CounterQuizClient() {
           : null;
       const email = user?.email ?? null;
       setAuthDisplayName(ingameName || (email ? email.split("@")[0] : null));
-      await loadLeaderboard(userId);
     });
 
     return () => {
@@ -272,6 +269,13 @@ export default function CounterQuizClient() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    if (!runComplete) return;
+    void loadLeaderboard(authUserId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, runComplete, authUserId]);
 
   useEffect(() => {
     if (!supabase) {
@@ -288,13 +292,28 @@ export default function CounterQuizClient() {
       setLoading(true);
       setLoadError(null);
 
+      let timedOut = false;
+      const timeout = window.setTimeout(() => {
+        timedOut = true;
+        setLoadError(
+          "Quiz loading is taking too long. This is usually caused by a slow strategy_logs query. Try refreshing, or add the recommended indexes in Supabase."
+        );
+        setSeeds([]);
+        setAllCounterTeams([]);
+        setLoading(false);
+      }, 15000);
+
       const { data, error } = await supabase
         .from("strategy_logs")
         .select("id, enemy_team, counter_team, type, votes, created_at")
         .eq("type", "success")
         .gt("votes", 0)
-        .order("created_at", { ascending: false })
-        .limit(2000);
+        // NOTE: avoid ORDER BY here; without an index this can be very slow.
+        .limit(1200);
+
+      window.clearTimeout(timeout);
+
+      if (timedOut) return;
 
       if (cancelled) return;
 
