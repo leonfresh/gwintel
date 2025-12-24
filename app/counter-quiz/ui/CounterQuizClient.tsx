@@ -134,7 +134,10 @@ export default function CounterQuizClient() {
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authDisplayName, setAuthDisplayName] = useState<string | null>(null);
-  const [personalBest, setPersonalBest] = useState({ bestScore: 0, bestStreak: 0 });
+  const [personalBest, setPersonalBest] = useState({
+    bestScore: 0,
+    bestStreak: 0,
+  });
 
   const autoAdvanceRef = useRef<number | null>(null);
 
@@ -146,16 +149,16 @@ export default function CounterQuizClient() {
 
   const normalizeTeam = useMemo(() => {
     return (team: string[]) => {
-    const out: string[] = [];
-    const seen = new Set<string>();
-    for (const id of team) {
-      if (typeof id !== "string") continue;
-      if (!heroesById.has(id)) continue;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      out.push(id);
-    }
-    return out;
+      const out: string[] = [];
+      const seen = new Set<string>();
+      for (const id of team) {
+        if (typeof id !== "string") continue;
+        if (!heroesById.has(id)) continue;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        out.push(id);
+      }
+      return out;
     };
   }, [heroesById]);
 
@@ -412,7 +415,12 @@ export default function CounterQuizClient() {
   };
 
   useEffect(() => {
-    if (!loading && !question && seeds.length > 0 && allCounterTeams.length > 0) {
+    if (
+      !loading &&
+      !question &&
+      seeds.length > 0 &&
+      allCounterTeams.length > 0
+    ) {
       nextQuestion();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -526,8 +534,8 @@ export default function CounterQuizClient() {
     cardJuice === "right"
       ? "scale(1.02)"
       : cardJuice === "wrong"
-        ? "translateX(-6px)"
-        : "scale(1)";
+      ? "translateX(-6px)"
+      : "scale(1)";
 
   if (!supabase) {
     return (
@@ -574,7 +582,8 @@ export default function CounterQuizClient() {
                   GW Counter Quiz
                 </div>
                 <div className="text-sm text-slate-300 mt-1">
-                  Pick the best counter team. Auto-advances in {AUTO_ADVANCE_MS / 1000}s.
+                  Pick the best counter team. Auto-advances in{" "}
+                  {AUTO_ADVANCE_MS / 1000}s.
                 </div>
               </div>
               <div className="text-right">
@@ -582,7 +591,8 @@ export default function CounterQuizClient() {
                   Best (you)
                 </div>
                 <div className="text-xs text-slate-300 font-bold mt-1">
-                  {personalBest.bestScore} score  {personalBest.bestStreak} streak
+                  {personalBest.bestScore} score {personalBest.bestStreak}{" "}
+                  streak
                 </div>
               </div>
             </div>
@@ -622,7 +632,10 @@ export default function CounterQuizClient() {
             </div>
 
             <div className="mt-5">
-              <div className="mx-auto w-full max-w-2xl" style={{ perspective: "1200px" }}>
+              <div
+                className="mx-auto w-full max-w-2xl"
+                style={{ perspective: "1200px" }}
+              >
                 <div
                   className="relative w-full"
                   style={{
@@ -634,7 +647,8 @@ export default function CounterQuizClient() {
                     className="relative w-full"
                     style={{
                       transformStyle: "preserve-3d",
-                      transition: "transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1)",
+                      transition:
+                        "transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1)",
                       transform: answered ? "rotateY(180deg)" : "rotateY(0deg)",
                     }}
                   >
@@ -646,11 +660,17 @@ export default function CounterQuizClient() {
                       }}
                     >
                       {loading ? (
-                        <div className="text-slate-300 font-bold">Loading quiz...</div>
+                        <div className="text-slate-300 font-bold">
+                          Loading quiz...
+                        </div>
                       ) : loadError ? (
-                        <div className="text-slate-300 font-bold">{loadError}</div>
+                        <div className="text-slate-300 font-bold">
+                          {loadError}
+                        </div>
                       ) : !question ? (
-                        <div className="text-slate-300 font-bold">Not enough data yet.</div>
+                        <div className="text-slate-300 font-bold">
+                          Not enough data yet.
+                        </div>
                       ) : (
                         <>
                           <div className="flex items-start justify-between gap-3">
@@ -712,7 +732,9 @@ export default function CounterQuizClient() {
                               </div>
                               <div
                                 className={`text-2xl font-black mt-1 ${
-                                  wasCorrect ? "text-emerald-300" : "text-rose-300"
+                                  wasCorrect
+                                    ? "text-emerald-300"
+                                    : "text-rose-300"
                                 }`}
                               >
                                 {wasCorrect ? "Correct" : "Wrong"}
@@ -799,10 +821,11 @@ export default function CounterQuizClient() {
                   >
                     <div className="min-w-0">
                       <div className="text-xs font-black text-slate-200 truncate">
-                        #{idx + 1}  {x.score} score
+                        #{idx + 1} {x.score} score
                       </div>
                       <div className="text-[11px] text-slate-400 font-bold">
-                        {x.best_streak} streak  {formatWhen(new Date(x.created_at).getTime())}
+                        {x.best_streak} streak{" "}
+                        {formatWhen(new Date(x.created_at).getTime())}
                       </div>
                       <div className="text-[11px] text-slate-500 font-bold truncate">
                         {x.display_name || "Unknown"}
