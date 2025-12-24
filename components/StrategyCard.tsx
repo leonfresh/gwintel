@@ -571,10 +571,16 @@ const StrategyCard: React.FC<Props> = ({
             {successLogs.length > 0 ? (
               successLogs.map((log) => <LogEntry key={log.id} log={log} />)
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-700/50 rounded-3xl opacity-40">
+              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-700/50 rounded-3xl">
                 <p className="text-slate-500 text-xs font-black uppercase tracking-widest">
                   No strategies found
                 </p>
+                <button
+                  onClick={() => onAddLog(enemyIds, "success")}
+                  className="mt-4 px-4 py-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-300 text-xs font-black uppercase tracking-widest transition-all active:scale-95"
+                >
+                  Add first successful counter
+                </button>
               </div>
             )}
           </div>
@@ -657,10 +663,16 @@ const StrategyCard: React.FC<Props> = ({
             {failLogs.length > 0 ? (
               failLogs.map((log) => <LogEntry key={log.id} log={log} />)
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-700/50 rounded-3xl opacity-40">
+              <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-slate-700/50 rounded-3xl">
                 <p className="text-slate-500 text-xs font-black uppercase tracking-widest">
-                  No data available
+                  No strategies found
                 </p>
+                <button
+                  onClick={() => onAddLog(enemyIds, "fail")}
+                  className="mt-4 px-4 py-2 rounded-xl border border-rose-500/25 bg-rose-500/10 hover:bg-rose-500/15 text-rose-300 text-xs font-black uppercase tracking-widest transition-all active:scale-95"
+                >
+                  Add first ineffective counter
+                </button>
               </div>
             )}
           </div>
