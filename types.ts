@@ -1,5 +1,4 @@
-
-export type HeroTier = 'SSS' | 'SS' | 'S+' | 'S' | 'A+' | 'A' | 'B' | 'C' | 'D';
+export type HeroTier = "SSS" | "SS" | "S+" | "S" | "A+" | "A" | "B" | "C" | "D";
 
 export interface Hero {
   id: string;
@@ -10,7 +9,7 @@ export interface Hero {
   tier: HeroTier;
 }
 
-export type LogType = 'success' | 'fail';
+export type LogType = "success" | "fail";
 
 export interface StrategyLog {
   id: string;

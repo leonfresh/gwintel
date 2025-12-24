@@ -1,40 +1,45 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { getSupabaseBrowserClient } from '../lib/supabase/browserClient';
+import { useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "../lib/supabase/browserClient";
 
-type Tab = 'login' | 'register';
+type Tab = "login" | "register";
 
 function isEmailVerified(user: User | null | undefined) {
-  const anyUser = user as unknown as { email_confirmed_at?: string | null; confirmed_at?: string | null } | null;
+  const anyUser = user as unknown as {
+    email_confirmed_at?: string | null;
+    confirmed_at?: string | null;
+  } | null;
   return Boolean(anyUser?.email_confirmed_at || anyUser?.confirmed_at);
 }
 
 export default function AuthModal({
   open,
-  initialTab = 'login',
+  initialTab = "login",
   reason,
   onClose,
 }: {
   open: boolean;
   initialTab?: Tab;
-  reason?: 'post' | 'vote' | 'generic';
+  reason?: "post" | "vote" | "generic";
   onClose: () => void;
 }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [tab, setTab] = useState<Tab>(initialTab);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [ingameName, setIngameName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<string>('');
+  const [status, setStatus] = useState<string>("");
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setTab(initialTab);
-    setStatus('');
-    setPassword('');
+    setStatus("");
+    setPassword("");
+    setIngameName("");
 
     if (!supabase) return;
 
@@ -53,7 +58,12 @@ export default function AuthModal({
 
   if (!open) return null;
 
-  const title = reason === 'post' ? 'Sign in to post' : reason === 'vote' ? 'Sign in to vote' : 'Sign in';
+  const title =
+    reason === "post"
+      ? "Sign in to post"
+      : reason === "vote"
+      ? "Sign in to vote"
+      : "Sign in";
 
   const close = () => {
     if (loading) return;
@@ -62,72 +72,88 @@ export default function AuthModal({
 
   const signIn = async () => {
     if (!supabase) {
-      setStatus('Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.');
+      setStatus(
+        "Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY."
+      );
       return;
     }
     setLoading(true);
-    setStatus('');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setStatus("");
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     setLoading(false);
     if (error) {
       setStatus(error.message);
       return;
     }
-    setStatus('Signed in. If you just registered, verify your email first.');
+    setStatus("Signed in. If you just registered, verify your email first.");
   };
 
   const signUp = async () => {
     if (!supabase) {
-      setStatus('Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.');
+      setStatus(
+        "Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY."
+      );
       return;
     }
     setLoading(true);
-    setStatus('');
+    setStatus("");
 
     const emailRedirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo },
+      options: {
+        emailRedirectTo,
+        data: {
+          ingame_name: ingameName.trim() || null,
+        },
+      },
     });
 
     setLoading(false);
     if (error) {
-      setStatus(error.message);
+      setStatus(
+        `${error.message}\n\nIf this says it cannot send a verification email: check Supabase Auth → Providers → Email, and Auth → URL Configuration (Site URL + Redirect URLs). If you use custom SMTP, verify it is configured.`
+      );
       return;
     }
 
-    setStatus('Registration email sent. Verify your email, then come back and sign in.');
+    setStatus(
+      "Registration email sent. Verify your email, then come back and sign in."
+    );
   };
 
   const resendVerification = async () => {
     if (!supabase) return;
     if (!email) {
-      setStatus('Enter your email first, then click resend.');
+      setStatus("Enter your email first, then click resend.");
       return;
     }
     setLoading(true);
-    setStatus('');
-    const { error } = await supabase.auth.resend({ type: 'signup', email });
+    setStatus("");
+    const { error } = await supabase.auth.resend({ type: "signup", email });
     setLoading(false);
     if (error) {
       setStatus(error.message);
       return;
     }
-    setStatus('Verification email resent.');
+    setStatus("Verification email resent.");
   };
 
   const signOut = async () => {
     if (!supabase) return;
     setLoading(true);
-    setStatus('');
+    setStatus("");
     const { error } = await supabase.auth.signOut();
     setLoading(false);
     if (error) {
       setStatus(error.message);
       return;
     }
-    setStatus('Signed out.');
+    setStatus("Signed out.");
   };
 
   const verified = isEmailVerified(user);
@@ -147,17 +173,27 @@ export default function AuthModal({
             <p className="text-slate-400 text-sm mt-1">
               {user
                 ? verified
-                  ? 'You are signed in and verified.'
-                  : 'You are signed in but must verify your email to post/vote.'
-                : 'Use email + password.'}
+                  ? "You are signed in and verified."
+                  : "You are signed in but must verify your email to post/vote."
+                : "Use email + password."}
             </p>
           </div>
           <button
             onClick={close}
             className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -167,18 +203,22 @@ export default function AuthModal({
             <div className="flex bg-slate-800/60 rounded-2xl p-1 border border-slate-700 mb-6">
               <button
                 type="button"
-                onClick={() => setTab('login')}
+                onClick={() => setTab("login")}
                 className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${
-                  tab === 'login' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-white'
+                  tab === "login"
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 Login
               </button>
               <button
                 type="button"
-                onClick={() => setTab('register')}
+                onClick={() => setTab("register")}
                 className={`flex-1 py-2 rounded-xl text-sm font-black transition-all ${
-                  tab === 'register' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-white'
+                  tab === "register"
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 Register
@@ -186,8 +226,26 @@ export default function AuthModal({
             </div>
 
             <div className="space-y-4">
+              {tab === "register" ? (
+                <label className="block">
+                  <span className="text-slate-300 text-sm font-semibold">
+                    In-game name
+                  </span>
+                  <input
+                    value={ingameName}
+                    onChange={(e) => setIngameName(e.target.value)}
+                    className="mt-1 w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+                    type="text"
+                    autoComplete="nickname"
+                    placeholder="Optional (recommended)"
+                  />
+                </label>
+              ) : null}
+
               <label className="block">
-                <span className="text-slate-300 text-sm font-semibold">Email</span>
+                <span className="text-slate-300 text-sm font-semibold">
+                  Email
+                </span>
                 <input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -198,17 +256,21 @@ export default function AuthModal({
               </label>
 
               <label className="block">
-                <span className="text-slate-300 text-sm font-semibold">Password</span>
+                <span className="text-slate-300 text-sm font-semibold">
+                  Password
+                </span>
                 <input
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="mt-1 w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
                   type="password"
-                  autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
+                  autoComplete={
+                    tab === "login" ? "current-password" : "new-password"
+                  }
                 />
               </label>
 
-              {tab === 'login' ? (
+              {tab === "login" ? (
                 <button
                   onClick={signIn}
                   disabled={loading || !email || !password}
@@ -236,7 +298,9 @@ export default function AuthModal({
               )}
             </div>
 
-            {status ? <p className="mt-5 text-slate-300 text-sm">{status}</p> : null}
+            {status ? (
+              <p className="mt-5 text-slate-300 text-sm">{status}</p>
+            ) : null}
           </div>
         ) : (
           <div className="p-6 space-y-4">

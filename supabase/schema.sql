@@ -12,8 +12,13 @@ create table if not exists public.strategy_logs (
   votes integer not null default 0,
   author_id uuid not null references auth.users (id) on delete cascade,
   author_email text,
+  author_name text,
   created_at timestamptz not null default now()
 );
+
+-- If you created the table before author_name existed
+alter table public.strategy_logs
+  add column if not exists author_name text;
 
 create table if not exists public.log_votes (
   log_id uuid not null references public.strategy_logs (id) on delete cascade,

@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { getSupabaseBrowserClient } from '../../../lib/supabase/browserClient';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getSupabaseBrowserClient } from "../../../lib/supabase/browserClient";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const [status, setStatus] = useState('Finalizing sign-in...');
+  const [status, setStatus] = useState("Finalizing sign-in...");
 
   useEffect(() => {
     if (!supabase) {
-      setStatus('Missing Supabase env vars.');
+      setStatus("Missing Supabase env vars.");
       return;
     }
 
@@ -24,10 +24,10 @@ export default function AuthCallbackPage() {
           setStatus(error.message);
           return;
         }
-        setStatus('Signed in. Redirecting...');
-        router.replace('/');
+        setStatus("Signed in. Redirecting...");
+        router.replace("/");
       } catch (e) {
-        setStatus('Failed to finalize auth.');
+        setStatus("Failed to finalize auth.");
       }
     })();
   }, [router, supabase]);
