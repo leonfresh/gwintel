@@ -337,7 +337,7 @@ export const HERO_DATABASE: Hero[] = [
       "Defense Reduction, Magic Vulnerability, Petrify, Buff Removal, Damage Immunity, Pierce, Cooldown Increase",
     attackType: "Magic",
     range: "4 Enemies",
-    tier: "SS",
+    tier: "SSS",
   },
   {
     id: "ace",

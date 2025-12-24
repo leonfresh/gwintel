@@ -8,6 +8,7 @@ import {
 } from "../types";
 import HeroAutocomplete from "./HeroAutocomplete";
 import { HERO_DATABASE } from "../constants";
+import HeroHoverCard from "./HeroHoverCard";
 
 interface Props {
   onSubmit: (
@@ -182,13 +183,18 @@ const StrategyForm: React.FC<Props> = ({
                 key={h.id}
                 className="inline-flex items-center px-4 py-2 bg-rose-500/10 text-rose-300 border border-rose-500/30 rounded-xl text-sm font-bold shadow-lg"
               >
-                <span className="w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2">
-                  <img
-                    src={`/heroes/${h.id}.png`}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                </span>
+                <HeroHoverCard hero={h}>
+                  <span
+                    className="w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2"
+                    tabIndex={0}
+                  >
+                    <img
+                      src={`/heroes/${h.id}.png`}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </span>
+                </HeroHoverCard>
                 {h.name}
                 {!initialEnemyTeam && (
                   <button
@@ -260,13 +266,18 @@ const StrategyForm: React.FC<Props> = ({
                     : "bg-rose-500/10 text-rose-300 border-rose-500/30"
                 }`}
               >
-                <span className="w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2">
-                  <img
-                    src={`/heroes/${h.id}.png`}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                </span>
+                <HeroHoverCard hero={h}>
+                  <span
+                    className="w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2"
+                    tabIndex={0}
+                  >
+                    <img
+                      src={`/heroes/${h.id}.png`}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  </span>
+                </HeroHoverCard>
                 {h.name}
                 <button
                   type="button"
@@ -312,13 +323,25 @@ const StrategyForm: React.FC<Props> = ({
                   </div>
 
                   <div className="flex-1 flex items-center gap-3">
-                    <span className="w-7 h-7 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center">
-                      <img
-                        src={`/heroes/${slot.heroId}.png`}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </span>
+                    {(() => {
+                      const hero = HERO_DATABASE.find((h) => h.id === slot.heroId);
+                      return hero ? (
+                        <HeroHoverCard hero={hero}>
+                          <span
+                            className="w-7 h-7 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center"
+                            tabIndex={0}
+                          >
+                            <img
+                              src={`/heroes/${slot.heroId}.png`}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          </span>
+                        </HeroHoverCard>
+                      ) : (
+                        <span className="w-7 h-7 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center" />
+                      );
+                    })()}
                     <select
                       value={slot.heroId}
                       onChange={(e) =>

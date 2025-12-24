@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { StrategyLog, LogType, SkillQueueItem } from "../types";
 import { HERO_DATABASE } from "../constants";
+import HeroHoverCard from "./HeroHoverCard";
 
 interface Props {
   enemyIds: string[];
@@ -89,26 +90,29 @@ const StrategyCard: React.FC<Props> = ({
       tone === "success" ? "border-emerald-400/30" : "border-rose-400/30";
 
     return (
-      <span
-        className={`relative inline-flex items-center gap-2 text-xs font-black pl-7 pr-3 py-1 rounded-lg shadow-sm border ${palette}`}
-      >
+      <HeroHoverCard hero={hero}>
         <span
-          className={`absolute -left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full overflow-hidden border ${ring} bg-slate-950/60 glass flex items-center justify-center text-[10px] font-black text-slate-100 shadow-lg`}
-          aria-hidden="true"
+          className={`relative inline-flex items-center gap-2 text-xs font-black pl-7 pr-3 py-1 rounded-lg shadow-sm border ${palette}`}
+          tabIndex={0}
         >
-          {imageOk ? (
-            <img
-              src={`/heroes/${hero.id}.png`}
-              alt=""
-              className="w-full h-full object-cover"
-              onError={() => setImageOk(false)}
-            />
-          ) : (
-            <span className="leading-none">{hero.name.charAt(0)}</span>
-          )}
+          <span
+            className={`absolute -left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full overflow-hidden border ${ring} bg-slate-950/60 glass flex items-center justify-center text-[10px] font-black text-slate-100 shadow-lg`}
+            aria-hidden="true"
+          >
+            {imageOk ? (
+              <img
+                src={`/heroes/${hero.id}.png`}
+                alt=""
+                className="w-full h-full object-cover"
+                onError={() => setImageOk(false)}
+              />
+            ) : (
+              <span className="leading-none">{hero.name.charAt(0)}</span>
+            )}
+          </span>
+          <span>{hero.name}</span>
         </span>
-        <span>{hero.name}</span>
-      </span>
+      </HeroHoverCard>
     );
   };
 
@@ -189,50 +193,52 @@ const StrategyCard: React.FC<Props> = ({
           const isTopThree = index < 3;
           const showImage = isTopThree && !imageErrors[id];
           return hero ? (
-            <div key={id} className="flex flex-col items-center gap-2 group">
-              <div className="relative">
+            <HeroHoverCard key={id} hero={hero}>
+              <div className="flex flex-col items-center gap-2 group" tabIndex={0}>
+                <div className="relative">
+                  <div
+                    className={`${
+                      isTopThree ? "w-20 h-20" : "w-14 h-14"
+                    } rounded-full bg-slate-950/25 glass border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
+                      hero.attackType === "Magic"
+                        ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                        : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
+                    }`}
+                  >
+                    {showImage ? (
+                      <img
+                        src={`/heroes/${id}.png`}
+                        alt={hero.name}
+                        className="w-full h-full object-cover"
+                        onError={() => handleImageError(id)}
+                      />
+                    ) : (
+                      <span
+                        className={`text-white font-black ${
+                          isTopThree ? "text-sm" : "text-xs"
+                        } text-center leading-none px-1`}
+                      >
+                        {hero.name}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-gradient-to-br ${getTierColor(
+                      hero.tier
+                    )} border border-white/10 shadow-lg`}
+                  >
+                    {hero.tier}
+                  </div>
+                </div>
                 <div
-                  className={`${
-                    isTopThree ? "w-20 h-20" : "w-14 h-14"
-                  } rounded-full bg-slate-950/25 glass border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
-                    hero.attackType === "Magic"
-                      ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
-                      : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
+                  className={`text-[10px] font-bold text-slate-300 text-center leading-tight max-w-[5.5rem] ${
+                    isTopThree ? "" : "opacity-80"
                   }`}
                 >
-                  {showImage ? (
-                    <img
-                      src={`/heroes/${id}.png`}
-                      alt={hero.name}
-                      className="w-full h-full object-cover"
-                      onError={() => handleImageError(id)}
-                    />
-                  ) : (
-                    <span
-                      className={`text-white font-black ${
-                        isTopThree ? "text-sm" : "text-xs"
-                      } text-center leading-none px-1`}
-                    >
-                      {hero.name}
-                    </span>
-                  )}
-                </div>
-                <div
-                  className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-gradient-to-br ${getTierColor(
-                    hero.tier
-                  )} border border-white/10 shadow-lg`}
-                >
-                  {hero.tier}
+                  {hero.name}
                 </div>
               </div>
-              <div
-                className={`text-[10px] font-bold text-slate-300 text-center leading-tight max-w-[5.5rem] ${
-                  isTopThree ? "" : "opacity-80"
-                }`}
-              >
-                {hero.name}
-              </div>
-            </div>
+            </HeroHoverCard>
           ) : null;
         })}
       </div>
@@ -535,7 +541,7 @@ const StrategyCard: React.FC<Props> = ({
                   />
                 </svg>
               </div>
-              Verified Fails
+              Ineffective Attackers
               {compactView && (
                 <button
                   onClick={() => setMobileExpandFail(!mobileExpandFail)}
