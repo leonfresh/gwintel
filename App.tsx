@@ -1385,7 +1385,7 @@ const App: React.FC = () => {
                         );
 
                         const isExpanded = expandedSquadKey === key;
-                        const enemyIds = key.split(",");
+                        const enemyIds = firstLog.enemyTeam;
 
                         if (isExpanded) {
                           return (
@@ -1481,7 +1481,7 @@ const App: React.FC = () => {
                           className="transition-all duration-300"
                         >
                           <StrategyCard
-                            enemyIds={key.split(",")}
+                            enemyIds={firstLog.enemyTeam}
                             logs={logs}
                             squadVotes={squadVotes[key] || 0}
                             squadCreator={firstLog.author}

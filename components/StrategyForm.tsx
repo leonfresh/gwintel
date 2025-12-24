@@ -105,7 +105,7 @@ const StrategyForm: React.FC<Props> = ({
     }
     setFormError("");
     onSubmit({
-      enemyTeam: enemyTeam.map((h) => h.id).sort(),
+      enemyTeam: enemyTeam.map((h) => h.id),
       counterTeam: counterTeam.map((h) => h.id),
       type,
       notes,
