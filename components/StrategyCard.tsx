@@ -10,11 +10,13 @@ interface Props {
   squadCreator: string;
   compactView: boolean;
   currentUserId: string | null;
+  currentUserName?: string | null;
   onVote: (id: string, type: "up" | "down") => void;
   onSquadVote: (type: "up" | "down") => void;
   onAddLog: (enemyIds: string[], type: LogType) => void;
   onDeleteLog: (id: string) => void;
   onEditLog: (log: StrategyLog) => void;
+  onUpdateEnemyTeamOrder?: (newOrder: string[]) => void;
 }
 
 const StrategyCard: React.FC<Props> = ({
@@ -24,20 +26,50 @@ const StrategyCard: React.FC<Props> = ({
   squadCreator,
   compactView,
   currentUserId,
+  currentUserName,
   onVote,
   onSquadVote,
   onAddLog,
   onDeleteLog,
   onEditLog,
+  onUpdateEnemyTeamOrder,
 }) => {
   const [mobileExpandSuccess, setMobileExpandSuccess] = useState(false);
   const [mobileExpandFail, setMobileExpandFail] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const isIcewind = currentUserName === "Icewind";
 
   const getHero = (id: string) => HERO_DATABASE.find((h) => h.id === id);
 
   const handleImageError = (heroId: string) => {
     setImageErrors((prev) => ({ ...prev, [heroId]: true }));
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    // Set a transparent image or custom drag image if needed
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+
+    const newOrder = [...enemyIds];
+    const [removed] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(dropIndex, 0, removed);
+
+    if (onUpdateEnemyTeamOrder) {
+      onUpdateEnemyTeamOrder(newOrder);
+    }
+    setDraggedIndex(null);
   };
   const successLogs = logs
     .filter((l) => l.type === "success")
@@ -193,55 +225,64 @@ const StrategyCard: React.FC<Props> = ({
           const isTopThree = index < 3;
           const showImage = isTopThree && !imageErrors[id];
           return hero ? (
-            <HeroHoverCard key={id} hero={hero}>
-              <div
-                className="flex flex-col items-center gap-2 group"
-                tabIndex={0}
-              >
-                <div className="relative">
+            <div
+              key={id}
+              draggable={isIcewind}
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDrop={(e) => handleDrop(e, index)}
+              className={isIcewind ? "cursor-move active:cursor-grabbing" : ""}
+            >
+              <HeroHoverCard hero={hero}>
+                <div
+                  className="flex flex-col items-center gap-2 group"
+                  tabIndex={0}
+                >
+                  <div className="relative">
+                    <div
+                      className={`${
+                        isTopThree ? "w-20 h-20" : "w-14 h-14"
+                      } rounded-full bg-slate-950/25 glass border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
+                        hero.attackType === "Magic"
+                          ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                          : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
+                      }`}
+                    >
+                      {showImage ? (
+                        <img
+                          src={`/heroes/${id}.png`}
+                          alt={hero.name}
+                          className="w-full h-full object-cover"
+                          onError={() => handleImageError(id)}
+                        />
+                      ) : (
+                        <span
+                          className={`text-white font-black ${
+                            isTopThree ? "text-sm" : "text-xs"
+                          } text-center leading-none px-1`}
+                        >
+                          {hero.name}
+                        </span>
+                      )}
+                    </div>
+                    <div
+                      className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-gradient-to-br ${getTierColor(
+                        hero.tier
+                      )} border border-white/10 shadow-lg`}
+                    >
+                      {hero.tier}
+                    </div>
+                  </div>
                   <div
-                    className={`${
-                      isTopThree ? "w-20 h-20" : "w-14 h-14"
-                    } rounded-full bg-slate-950/25 glass border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
-                      hero.attackType === "Magic"
-                        ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
-                        : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
+                    className={`text-[10px] font-bold text-slate-300 text-center leading-tight max-w-[5.5rem] ${
+                      isTopThree ? "" : "opacity-80"
                     }`}
                   >
-                    {showImage ? (
-                      <img
-                        src={`/heroes/${id}.png`}
-                        alt={hero.name}
-                        className="w-full h-full object-cover"
-                        onError={() => handleImageError(id)}
-                      />
-                    ) : (
-                      <span
-                        className={`text-white font-black ${
-                          isTopThree ? "text-sm" : "text-xs"
-                        } text-center leading-none px-1`}
-                      >
-                        {hero.name}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-gradient-to-br ${getTierColor(
-                      hero.tier
-                    )} border border-white/10 shadow-lg`}
-                  >
-                    {hero.tier}
+                    {hero.name}
                   </div>
                 </div>
-                <div
-                  className={`text-[10px] font-bold text-slate-300 text-center leading-tight max-w-[5.5rem] ${
-                    isTopThree ? "" : "opacity-80"
-                  }`}
-                >
-                  {hero.name}
-                </div>
-              </div>
-            </HeroHoverCard>
+              </HeroHoverCard>
+            </div>
           ) : null;
         })}
       </div>

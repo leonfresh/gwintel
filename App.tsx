@@ -643,6 +643,49 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handleUpdateEnemyTeamOrder = async (
+    oldSquadKey: string,
+    newEnemyIds: string[]
+  ) => {
+    // 1. Find all logs that belong to this squad
+    const logsToUpdate =
+      groupedLogs.find(([key]) => key === oldSquadKey)?.[1] || [];
+    if (logsToUpdate.length === 0) return;
+
+    const logIds = logsToUpdate.map((l) => l.id);
+
+    // 2. Optimistic update
+    setLogs((prev) =>
+      prev.map((l) => {
+        if (logIds.includes(l.id)) {
+          return { ...l, enemyTeam: newEnemyIds };
+        }
+        return l;
+      })
+    );
+
+    // 3. Supabase update
+    const client = getSupabaseBrowserClient();
+    if (!client) return;
+
+    const { error } = await client
+      .from("strategy_logs")
+      .update({ enemy_team: newEnemyIds })
+      .in("id", logIds);
+
+    if (error) {
+      console.error("Failed to update order", error);
+      pushToast({
+        tone: "error",
+        title: "Update failed",
+        message: error.message,
+      });
+      // Revert state if needed, but for now we assume success or refresh
+    } else {
+      pushToast({ tone: "success", title: "Squad order updated" });
+    }
+  };
+
   // Group logs by unique enemy squad
   const groupedLogs = useMemo(() => {
     const groups: Record<string, StrategyLog[]> = {};
@@ -1410,6 +1453,7 @@ const App: React.FC = () => {
                                 squadCreator={firstLog.author}
                                 compactView={false}
                                 currentUserId={authUserId}
+                                currentUserName={authDisplayName}
                                 onVote={handleVote}
                                 onSquadVote={(type) =>
                                   handleSquadVote(key, type)
@@ -1417,6 +1461,9 @@ const App: React.FC = () => {
                                 onAddLog={openAddLog}
                                 onDeleteLog={handleDeleteLog}
                                 onEditLog={openEditLog}
+                                onUpdateEnemyTeamOrder={(newOrder) =>
+                                  handleUpdateEnemyTeamOrder(key, newOrder)
+                                }
                               />
                             </div>
                           );
@@ -1487,11 +1534,15 @@ const App: React.FC = () => {
                             squadCreator={firstLog.author}
                             compactView={compactView}
                             currentUserId={authUserId}
+                            currentUserName={authDisplayName}
                             onVote={handleVote}
                             onSquadVote={(type) => handleSquadVote(key, type)}
                             onAddLog={openAddLog}
                             onDeleteLog={handleDeleteLog}
                             onEditLog={openEditLog}
+                            onUpdateEnemyTeamOrder={(newOrder) =>
+                              handleUpdateEnemyTeamOrder(key, newOrder)
+                            }
                           />
                         </div>
                       );
