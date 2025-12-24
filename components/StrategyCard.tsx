@@ -273,8 +273,8 @@ const StrategyCard: React.FC<Props> = ({
     const isOwnPost = Boolean(currentUserId && log.authorId === currentUserId);
     const cardBg =
       log.type === "success"
-        ? "bg-emerald-950/35 hover:bg-emerald-950/40"
-        : "bg-rose-950/35 hover:bg-rose-950/40";
+        ? "bg-emerald-950/18 hover:bg-emerald-950/22"
+        : "bg-rose-950/18 hover:bg-rose-950/22";
 
     const SkillQueueRow: React.FC<{ queue: SkillQueueItem[] }> = ({
       queue,
