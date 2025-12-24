@@ -7,6 +7,7 @@ import { HERO_DATABASE } from "../../../constants";
 import HeroAvatar from "../../../components/HeroAvatar";
 import HeroHoverCard from "../../../components/HeroHoverCard";
 import { HeroHoverProvider } from "../../../components/HeroHoverProvider";
+import AuthModal from "../../../components/AuthModal";
 import { getSupabaseBrowserClient } from "../../../lib/supabase/browserClient";
 
 type DbStrategyLogRow = {
@@ -121,6 +122,11 @@ function TeamRow({
 export default function CounterQuizClient() {
   const supabase = getSupabaseBrowserClient();
 
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalReason, setAuthModalReason] = useState<
+    "generic" | "vote" | "post"
+  >("generic");
+
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [seeds, setSeeds] = useState<QuestionSeed[]>([]);
@@ -145,6 +151,7 @@ export default function CounterQuizClient() {
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authDisplayName, setAuthDisplayName] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [personalBest, setPersonalBest] = useState({
     bestScore: 0,
     bestStreak: 0,
@@ -244,6 +251,7 @@ export default function CounterQuizClient() {
           ? (user.user_metadata.ingame_name as string)
           : null;
       const email = user?.email ?? null;
+      setAuthEmail(email);
       const display = ingameName || (email ? email.split("@")[0] : null);
       setAuthDisplayName(display);
     };
@@ -260,6 +268,7 @@ export default function CounterQuizClient() {
           ? (user.user_metadata.ingame_name as string)
           : null;
       const email = user?.email ?? null;
+      setAuthEmail(email);
       setAuthDisplayName(ingameName || (email ? email.split("@")[0] : null));
     });
 
@@ -327,6 +336,30 @@ export default function CounterQuizClient() {
       }
 
       const rows = (data as DbStrategyLogRow[] | null) ?? [];
+
+      if (rows.length === 0) {
+        const { count } = await supabase
+          .from("strategy_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("type", "success");
+
+        if (cancelled) return;
+
+        if (typeof count === "number" && count > 0) {
+          setLoadError(
+            `Found ${count} success reports, but none are eligible for the quiz yet. The quiz only uses counters with votes > 0 (downvoted/zero-vote entries are ignored). Upvote good counters to train the quiz.`
+          );
+        } else {
+          setLoadError(
+            "No success reports found yet. Add a few success reports in the main app to generate quiz questions."
+          );
+        }
+
+        setSeeds([]);
+        setAllCounterTeams([]);
+        setLoading(false);
+        return;
+      }
 
       const enemyToCounters = new Map<
         string,
@@ -621,352 +654,466 @@ export default function CounterQuizClient() {
     );
   }
 
+  const handleSignOut = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+  };
+
   return (
     <HeroHoverProvider>
-      <div className="min-h-screen px-4 py-10 flex items-center justify-center">
-        <div className="w-full max-w-5xl">
-          <div className="flex items-center justify-between gap-3">
-            <Link
-              href="/"
-              className="px-4 py-2 rounded-xl bg-slate-950/30 glass border border-white/10 text-slate-200 hover:text-white hover:bg-slate-950/40 transition"
-            >
-              Back
-            </Link>
-            {runComplete ? (
-              <button
-                onClick={reset}
-                className="px-4 py-2 rounded-xl bg-slate-950/30 glass border border-white/10 text-slate-200 hover:text-white hover:bg-slate-950/40 transition"
-              >
-                Start New Run
-              </button>
-            ) : (
-              <button
-                onClick={reset}
-                className="px-4 py-2 rounded-xl bg-slate-950/30 glass border border-white/10 text-slate-200 hover:text-white hover:bg-slate-950/40 transition"
-              >
-                Reset Run
-              </button>
-            )}
-          </div>
+      <AuthModal
+        open={authModalOpen}
+        reason={authModalReason}
+        onClose={() => setAuthModalOpen(false)}
+      />
 
-          <div className="mt-6">
-            {runComplete ? (
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
-                <div className="bg-slate-950/20 glass p-6 rounded-[1.75rem] border border-white/10">
-                  <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
-                    Report Card
-                  </div>
-                  <div className="text-3xl font-black text-white mt-2">
-                    Final score: {score}
-                  </div>
-                  <div className="text-sm text-slate-300 font-bold mt-2">
-                    Best streak: {Math.max(runBestStreak, streak)} · Questions:{" "}
-                    {MAX_QUESTIONS}
-                  </div>
-
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
-                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                        Best (you)
-                      </div>
-                      <div className="text-xl font-black text-slate-200 mt-1">
-                        {personalBest.bestScore}
-                        <span className="text-sm font-black text-slate-400">
-                          {" "}
-                          score
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-400 mt-1 font-bold">
-                        {personalBest.bestStreak} streak
-                      </div>
-                    </div>
-                    <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
-                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                        Submission
-                      </div>
-                      {!authUserId ? (
-                        <div className="text-[11px] text-slate-300 font-bold mt-1">
-                          Sign in to submit scores.
-                        </div>
-                      ) : leaderboardError ? (
-                        <div className="text-[11px] text-rose-300 font-bold mt-1">
-                          {leaderboardError}
-                        </div>
-                      ) : (
-                        <div className="text-[11px] text-slate-300 font-bold mt-1">
-                          Submitted to global leaderboard.
-                        </div>
-                      )}
-                      <div className="text-[11px] text-slate-500 font-bold mt-1">
-                        Auto-submitted on completion.
-                      </div>
-                    </div>
-                  </div>
+      <div className="min-h-screen">
+        <nav className="border-b border-white/10 bg-slate-950/35 glass sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600/90 rounded-xl flex items-center justify-center shadow-lg rotate-3">
+                <svg
+                  className="w-6 h-6 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.5"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <div className="text-lg font-black tracking-tight text-white uppercase leading-none">
+                  Rebirth GW Intel
                 </div>
-
-                <div className="bg-slate-950/20 glass p-5 rounded-[1.75rem] border border-white/10 h-fit">
-                  <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
-                    Leaderboard
-                  </div>
-                  <div className="text-xs text-slate-400 font-bold mt-1">
-                    Global top runs.
-                  </div>
-
-                  <div className="mt-4 space-y-2">
-                    {leaderboard.length === 0 ? (
-                      <div className="text-sm text-slate-300 font-bold">
-                        No scores yet.
-                      </div>
-                    ) : (
-                      leaderboard.slice(0, 10).map((x, idx) => (
-                        <div
-                          key={x.id}
-                          className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/20 glass px-3 py-2"
-                        >
-                          <div className="min-w-0">
-                            <div className="text-xs font-black text-slate-200 truncate">
-                              #{idx + 1} {x.score} score
-                            </div>
-                            <div className="text-[11px] text-slate-400 font-bold">
-                              {x.best_streak} streak{" "}
-                              {formatWhen(new Date(x.created_at).getTime())}
-                            </div>
-                            <div className="text-[11px] text-slate-500 font-bold truncate">
-                              {x.display_name || "Unknown"}
-                            </div>
-                          </div>
-                          <div className="text-xs font-black text-slate-300">
-                            {idx === 0 ? "Best" : ""}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  Seven Knights Intelligence
                 </div>
               </div>
-            ) : (
-              <div className="mx-auto w-full max-w-3xl">
-                <div className="bg-slate-950/20 glass p-5 rounded-[1.75rem] border border-white/10">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
-                        GW Counter Quiz
-                      </div>
-                      <div className="text-sm text-slate-300 mt-1">
-                        Pick the best counter team. Auto-advances in{" "}
-                        {AUTO_ADVANCE_MS / 1000}s.
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                        Progress
-                      </div>
-                      <div className="text-xs text-slate-300 font-bold mt-1">
-                        {questionsAnswered}/{MAX_QUESTIONS}
-                      </div>
-                    </div>
+            </Link>
+
+            <div className="flex items-center gap-3">
+              <Link
+                href="/counter-quiz"
+                className="px-4 py-2 bg-slate-900/30 glass hover:bg-slate-900/45 text-slate-200 hover:text-white font-bold text-sm rounded-xl border border-white/10 transition-all flex items-center gap-2"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M7 7h10M7 12h10M7 17h10"
+                  />
+                </svg>
+                <span className="hidden sm:inline">Counter Quiz</span>
+                <span className="sm:hidden">Quiz</span>
+              </Link>
+
+              {authUserId ? (
+                <>
+                  <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-900/30 glass rounded-xl border border-white/10">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                    <span className="text-sm text-slate-300 font-semibold">
+                      {authDisplayName ??
+                        (authEmail ? authEmail.split("@")[0] : "User")}
+                    </span>
                   </div>
-
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
-                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                        Score
-                      </div>
-                      <div
-                        className={`text-4xl font-black text-white mt-1 transition-transform duration-150 origin-left ${
-                          scoreJuice ? "scale-110" : "scale-100"
-                        }`}
-                      >
-                        {score}
-                      </div>
-                      <div className="text-[11px] text-slate-400 mt-1 font-bold">
-                        &nbsp;
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
-                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                        Streak
-                      </div>
-                      <div
-                        className={`text-4xl font-black text-white mt-1 transition-transform duration-150 origin-left ${
-                          streakJuice ? "scale-110" : "scale-100"
-                        }`}
-                      >
-                        {streak}
-                      </div>
-                      <div className="text-[11px] text-slate-400 mt-1 font-bold">
-                        Best this run: {Math.max(runBestStreak, streak)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-5">
-                    <div
-                      className="mx-auto w-full"
-                      style={{ perspective: "1200px" }}
+                  <button
+                    onClick={handleSignOut}
+                    className="px-4 py-2 bg-slate-900/30 glass hover:bg-slate-900/45 text-slate-200 hover:text-white font-bold text-sm rounded-xl border border-white/10 transition-all flex items-center gap-2"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
+                    </svg>
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setAuthModalReason("generic");
+                    setAuthModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-blue-600/90 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-all flex items-center gap-2"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+                    />
+                  </svg>
+                  <span>Sign In</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </nav>
+
+        <div className="px-4 py-10 flex items-center justify-center">
+          <div className="w-full max-w-5xl">
+            <div className="flex items-center justify-between gap-3">
+              {runComplete ? (
+                <button
+                  onClick={reset}
+                  className="px-4 py-2 rounded-xl bg-slate-950/30 glass border border-white/10 text-slate-200 hover:text-white hover:bg-slate-950/40 transition"
+                >
+                  Start New Run
+                </button>
+              ) : (
+                <button
+                  onClick={reset}
+                  className="px-4 py-2 rounded-xl bg-slate-950/30 glass border border-white/10 text-slate-200 hover:text-white hover:bg-slate-950/40 transition"
+                >
+                  Reset Run
+                </button>
+              )}
+            </div>
+
+            <div className="mt-6">
+              {runComplete ? (
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
+                  <div className="bg-slate-950/20 glass p-6 rounded-[1.75rem] border border-white/10">
+                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                      Report Card
+                    </div>
+                    <div className="text-3xl font-black text-white mt-2">
+                      Final score: {score}
+                    </div>
+                    <div className="text-sm text-slate-300 font-bold mt-2">
+                      Best streak: {Math.max(runBestStreak, streak)} ·
+                      Questions: {MAX_QUESTIONS}
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
+                        <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                          Best (you)
+                        </div>
+                        <div className="text-xl font-black text-slate-200 mt-1">
+                          {personalBest.bestScore}
+                          <span className="text-sm font-black text-slate-400">
+                            {" "}
+                            score
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-1 font-bold">
+                          {personalBest.bestStreak} streak
+                        </div>
+                      </div>
+                      <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
+                        <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                          Submission
+                        </div>
+                        {!authUserId ? (
+                          <div className="text-[11px] text-slate-300 font-bold mt-1">
+                            Sign in to submit scores.
+                          </div>
+                        ) : leaderboardError ? (
+                          <div className="text-[11px] text-rose-300 font-bold mt-1">
+                            {leaderboardError}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-300 font-bold mt-1">
+                            Submitted to global leaderboard.
+                          </div>
+                        )}
+                        <div className="text-[11px] text-slate-500 font-bold mt-1">
+                          Auto-submitted on completion.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/20 glass p-5 rounded-[1.75rem] border border-white/10 h-fit">
+                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                      Leaderboard
+                    </div>
+                    <div className="text-xs text-slate-400 font-bold mt-1">
+                      Global top runs.
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      {leaderboard.length === 0 ? (
+                        <div className="text-sm text-slate-300 font-bold">
+                          No scores yet.
+                        </div>
+                      ) : (
+                        leaderboard.slice(0, 10).map((x, idx) => (
+                          <div
+                            key={x.id}
+                            className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/20 glass px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="text-xs font-black text-slate-200 truncate">
+                                #{idx + 1} {x.score} score
+                              </div>
+                              <div className="text-[11px] text-slate-400 font-bold">
+                                {x.best_streak} streak{" "}
+                                {formatWhen(new Date(x.created_at).getTime())}
+                              </div>
+                              <div className="text-[11px] text-slate-500 font-bold truncate">
+                                {x.display_name || "Unknown"}
+                              </div>
+                            </div>
+                            <div className="text-xs font-black text-slate-300">
+                              {idx === 0 ? "Best" : ""}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mx-auto w-full max-w-3xl">
+                  <div className="bg-slate-950/20 glass p-5 rounded-[1.75rem] border border-white/10">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                          GW Counter Quiz
+                        </div>
+                        <div className="text-sm text-slate-300 mt-1">
+                          Pick the best counter team. Auto-advances in{" "}
+                          {AUTO_ADVANCE_MS / 1000}s.
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                          Progress
+                        </div>
+                        <div className="text-xs text-slate-300 font-bold mt-1">
+                          {questionsAnswered}/{MAX_QUESTIONS}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
+                        <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                          Score
+                        </div>
+                        <div
+                          className={`text-4xl font-black text-white mt-1 transition-transform duration-150 origin-left ${
+                            scoreJuice ? "scale-110" : "scale-100"
+                          }`}
+                        >
+                          {score}
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-1 font-bold">
+                          &nbsp;
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
+                        <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                          Streak
+                        </div>
+                        <div
+                          className={`text-4xl font-black text-white mt-1 transition-transform duration-150 origin-left ${
+                            streakJuice ? "scale-110" : "scale-100"
+                          }`}
+                        >
+                          {streak}
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-1 font-bold">
+                          Best this run: {Math.max(runBestStreak, streak)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
                       <div
-                        className="relative w-full"
-                        style={{
-                          transform: cardTransform,
-                          transition: "transform 180ms ease",
-                        }}
+                        className="mx-auto w-full"
+                        style={{ perspective: "1200px" }}
                       >
                         <div
                           className="relative w-full"
                           style={{
-                            transformStyle: "preserve-3d",
-                            transition:
-                              "transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1)",
-                            transform: answered
-                              ? "rotateY(180deg)"
-                              : "rotateY(0deg)",
+                            transform: cardTransform,
+                            transition: "transform 180ms ease",
                           }}
                         >
                           <div
-                            className="rounded-[1.75rem] border border-white/10 bg-slate-950/20 glass p-5"
+                            className="relative w-full"
                             style={{
-                              backfaceVisibility: "hidden",
-                              WebkitBackfaceVisibility: "hidden",
+                              transformStyle: "preserve-3d",
+                              transition:
+                                "transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1)",
+                              transform: answered
+                                ? "rotateY(180deg)"
+                                : "rotateY(0deg)",
                             }}
                           >
-                            {loading ? (
-                              <div className="text-slate-300 font-bold">
-                                Loading quiz...
-                              </div>
-                            ) : loadError ? (
-                              <div className="text-slate-300 font-bold">
-                                {loadError}
-                              </div>
-                            ) : !question ? (
-                              <div className="text-slate-300 font-bold">
-                                Not enough data yet.
-                              </div>
-                            ) : (
-                              <>
-                                <div className="flex items-start justify-between gap-3">
-                                  <div>
-                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
-                                      Enemy Team
-                                    </div>
-                                    <div className="mt-2">
-                                      <TeamRow
-                                        ids={question.enemyTeam}
-                                        size="md"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                      Choose Counter
-                                    </div>
-                                    <div className="text-xs text-slate-400 font-bold mt-1">
-                                      Tap an option
-                                    </div>
-                                  </div>
+                            <div
+                              className="rounded-[1.75rem] border border-white/10 bg-slate-950/20 glass p-5"
+                              style={{
+                                backfaceVisibility: "hidden",
+                                WebkitBackfaceVisibility: "hidden",
+                              }}
+                            >
+                              {loading ? (
+                                <div className="text-slate-300 font-bold">
+                                  Loading quiz...
                                 </div>
+                              ) : loadError ? (
+                                <div className="text-slate-300 font-bold">
+                                  {loadError}
+                                </div>
+                              ) : !question ? (
+                                <div className="text-slate-300 font-bold">
+                                  Not enough data yet.
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                                        Enemy Team
+                                      </div>
+                                      <div className="mt-2">
+                                        <TeamRow
+                                          ids={question.enemyTeam}
+                                          size="md"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                        Choose Counter
+                                      </div>
+                                      <div className="text-xs text-slate-400 font-bold mt-1">
+                                        Tap an option
+                                      </div>
+                                    </div>
+                                  </div>
 
-                                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  {question.options.map((opt) => {
-                                    const key = teamKey(opt);
-                                    return (
-                                      <button
-                                        key={key}
-                                        onClick={() => void answer(opt)}
-                                        className="group text-left rounded-2xl border border-white/10 bg-slate-950/20 glass p-4 transition will-change-transform hover:bg-slate-950/30 hover:border-white/20 hover:-translate-y-0.5 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-white/20"
+                                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {question.options.map((opt) => {
+                                      const key = teamKey(opt);
+                                      return (
+                                        <button
+                                          key={key}
+                                          onClick={() => void answer(opt)}
+                                          className="group text-left rounded-2xl border border-white/10 bg-slate-950/20 glass p-4 transition will-change-transform hover:bg-slate-950/30 hover:border-white/20 hover:-translate-y-0.5 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-white/20"
+                                        >
+                                          <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                            Counter Team
+                                          </div>
+                                          <div className="mt-2">
+                                            <TeamRow ids={opt} size="sm" />
+                                          </div>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            <div
+                              className="absolute inset-0 rounded-[1.75rem] border border-white/10 bg-slate-950/20 glass p-5"
+                              style={{
+                                transform: "rotateY(180deg)",
+                                backfaceVisibility: "hidden",
+                                WebkitBackfaceVisibility: "hidden",
+                              }}
+                            >
+                              {!question ? null : (
+                                <>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                                        Result
+                                      </div>
+                                      <div
+                                        className={`text-2xl font-black mt-1 ${
+                                          wasCorrect
+                                            ? "text-emerald-300"
+                                            : "text-rose-300"
+                                        }`}
                                       >
-                                        <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                          Counter Team
-                                        </div>
-                                        <div className="mt-2">
-                                          <TeamRow ids={opt} size="sm" />
-                                        </div>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </>
-                            )}
-                          </div>
+                                        {wasCorrect ? "Correct" : "Wrong"}
+                                      </div>
+                                      <div className="text-xs text-slate-300 font-bold mt-2">
+                                        Next in {AUTO_ADVANCE_MS / 1000}s
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                        Enemy
+                                      </div>
+                                      <div className="mt-2 flex justify-end">
+                                        <TeamRow
+                                          ids={question.enemyTeam}
+                                          size="md"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
 
-                          <div
-                            className="absolute inset-0 rounded-[1.75rem] border border-white/10 bg-slate-950/20 glass p-5"
-                            style={{
-                              transform: "rotateY(180deg)",
-                              backfaceVisibility: "hidden",
-                              WebkitBackfaceVisibility: "hidden",
-                            }}
-                          >
-                            {!question ? null : (
-                              <>
-                                <div className="flex items-start justify-between gap-3">
-                                  <div>
-                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
-                                      Result
+                                  <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="rounded-2xl border border-white/10 bg-slate-950/20 glass p-4">
+                                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                        Your Pick
+                                      </div>
+                                      <div className="mt-2">
+                                        {selectedTeam ? (
+                                          <TeamRow ids={selectedTeam} />
+                                        ) : (
+                                          <div className="text-sm text-slate-400 font-bold"></div>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div
-                                      className={`text-2xl font-black mt-1 ${
-                                        wasCorrect
-                                          ? "text-emerald-300"
-                                          : "text-rose-300"
-                                      }`}
-                                    >
-                                      {wasCorrect ? "Correct" : "Wrong"}
-                                    </div>
-                                    <div className="text-xs text-slate-300 font-bold mt-2">
-                                      Next in {AUTO_ADVANCE_MS / 1000}s
+                                    <div className="rounded-2xl border border-white/10 bg-slate-950/20 glass p-4">
+                                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                        Best Counter
+                                      </div>
+                                      <div className="mt-2">
+                                        {correctTeam ? (
+                                          <TeamRow ids={correctTeam} />
+                                        ) : (
+                                          <div className="text-sm text-slate-400 font-bold"></div>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="text-right">
-                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                      Enemy
-                                    </div>
-                                    <div className="mt-2 flex justify-end">
-                                      <TeamRow
-                                        ids={question.enemyTeam}
-                                        size="md"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  <div className="rounded-2xl border border-white/10 bg-slate-950/20 glass p-4">
-                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                      Your Pick
-                                    </div>
-                                    <div className="mt-2">
-                                      {selectedTeam ? (
-                                        <TeamRow ids={selectedTeam} />
-                                      ) : (
-                                        <div className="text-sm text-slate-400 font-bold"></div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="rounded-2xl border border-white/10 bg-slate-950/20 glass p-4">
-                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                      Best Counter
-                                    </div>
-                                    <div className="mt-2">
-                                      {correctTeam ? (
-                                        <TeamRow ids={correctTeam} />
-                                      ) : (
-                                        <div className="text-sm text-slate-400 font-bold"></div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </>
-                            )}
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
