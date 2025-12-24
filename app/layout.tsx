@@ -26,6 +26,9 @@ export default function RootLayout({
         <style>{`
           body { font-family: 'Inter', sans-serif; }
 
+          /* Prevent initial flash of huge SVGs before Tailwind utilities load */
+          svg { width: 1.25rem; height: 1.25rem; display: inline-block; }
+
           /* Slow, modern background motion */
           @keyframes drift-a {
             0% { transform: translate3d(-6%, -4%, 0) scale(1); }
