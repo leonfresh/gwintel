@@ -182,6 +182,13 @@ const StrategyForm: React.FC<Props> = ({
                 key={h.id}
                 className="inline-flex items-center px-4 py-2 bg-rose-500/10 text-rose-300 border border-rose-500/30 rounded-xl text-sm font-bold shadow-lg"
               >
+                <span className="w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2">
+                  <img
+                    src={`/heroes/${h.id}.png`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </span>
                 {h.name}
                 {!initialEnemyTeam && (
                   <button
@@ -253,6 +260,13 @@ const StrategyForm: React.FC<Props> = ({
                     : "bg-rose-500/10 text-rose-300 border-rose-500/30"
                 }`}
               >
+                <span className="w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2">
+                  <img
+                    src={`/heroes/${h.id}.png`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </span>
                 {h.name}
                 <button
                   type="button"
@@ -297,19 +311,28 @@ const StrategyForm: React.FC<Props> = ({
                     #{idx + 1}
                   </div>
 
-                  <select
-                    value={slot.heroId}
-                    onChange={(e) =>
-                      updateSkillSlot(idx, { heroId: e.target.value })
-                    }
-                    className="flex-1 px-4 py-2 bg-slate-900/35 glass border border-white/10 rounded-xl text-sm font-bold text-white focus:ring-2 focus:ring-blue-500"
-                  >
-                    {counterTeam.map((h) => (
-                      <option key={h.id} value={h.id}>
-                        {h.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex-1 flex items-center gap-3">
+                    <span className="w-7 h-7 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center">
+                      <img
+                        src={`/heroes/${slot.heroId}.png`}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </span>
+                    <select
+                      value={slot.heroId}
+                      onChange={(e) =>
+                        updateSkillSlot(idx, { heroId: e.target.value })
+                      }
+                      className="flex-1 px-4 py-2 bg-slate-900/35 glass border border-white/10 rounded-xl text-sm font-bold text-white focus:ring-2 focus:ring-blue-500"
+                    >
+                      {counterTeam.map((h) => (
+                        <option key={h.id} value={h.id}>
+                          {h.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
                   <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-700 shadow-inner">
                     {(["top", "bottom"] as SkillChoice[]).map((choice) => (

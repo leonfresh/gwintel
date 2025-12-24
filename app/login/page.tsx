@@ -7,6 +7,7 @@ export default function LoginPage() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [ingameName, setIngameName] = useState("");
   const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
@@ -43,14 +44,38 @@ export default function LoginPage() {
       setStatus("Email and password are required.");
       return;
     }
+
+    const desired = ingameName.trim();
+    const desiredLower = desired.toLowerCase();
+    if (desired) {
+      const { data: existing, error: existsError } = await supabase
+        .from("user_profiles")
+        .select("user_id")
+        .eq("username_lower", desiredLower)
+        .maybeSingle();
+
+      if (existsError) {
+        setStatus(existsError.message);
+        return;
+      }
+
+      if (existing) {
+        setStatus("That in-game name is already taken.");
+        return;
+      }
+    }
+
     setLoading(true);
     setStatus("");
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: undefined, // Skip email confirmation
+        data: {
+          ingame_name: desired || null,
+        },
       },
     });
 
@@ -58,6 +83,23 @@ export default function LoginPage() {
     if (error) {
       setStatus(error.message);
       return;
+    }
+
+    if (desired && data.user?.id) {
+      const { error: upsertError } = await supabase
+        .from("user_profiles")
+        .upsert(
+          {
+            user_id: data.user.id,
+            username: desired,
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (upsertError) {
+        setStatus(upsertError.message);
+        return;
+      }
     }
     setStatus("Account created! You're now signed in.");
   };
@@ -118,6 +160,25 @@ export default function LoginPage() {
         </div>
       ) : (
         <div className="space-y-4">
+          {isSignUp ? (
+            <label className="block">
+              <span className="text-slate-300 text-sm font-semibold">
+                In-game name
+              </span>
+              <input
+                value={ingameName}
+                onChange={(e) => {
+                  setIngameName(e.target.value);
+                  if (status) setStatus("");
+                }}
+                className="mt-1 w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+                type="text"
+                autoComplete="nickname"
+                placeholder="Required (unique)"
+              />
+            </label>
+          ) : null}
+
           <label className="block">
             <span className="text-slate-300 text-sm font-semibold">Email</span>
             <input

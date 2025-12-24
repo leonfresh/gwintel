@@ -44,6 +44,23 @@ begin
 end;
 $$;
 
+-- User profiles (unique in-game name registry)
+create table if not exists public.user_profiles (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  username text not null,
+  username_lower text generated always as (lower(username)) stored,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists user_profiles_username_lower_key
+  on public.user_profiles (username_lower);
+
+drop trigger if exists set_user_profiles_updated_at on public.user_profiles;
+create trigger set_user_profiles_updated_at
+before update on public.user_profiles
+for each row execute function public.set_updated_at();
+
 drop trigger if exists set_log_votes_updated_at on public.log_votes;
 create trigger set_log_votes_updated_at
 before update on public.log_votes
@@ -79,6 +96,7 @@ for each row execute function public.tg_recompute_votes();
 
 alter table public.strategy_logs enable row level security;
 alter table public.log_votes enable row level security;
+alter table public.user_profiles enable row level security;
 
 drop policy if exists "read strategy logs" on public.strategy_logs;
 create policy "read strategy logs"
@@ -93,12 +111,48 @@ create policy "insert strategy logs"
   to authenticated
   with check (auth.uid() = author_id);
 
+drop policy if exists "update own strategy logs" on public.strategy_logs;
+create policy "update own strategy logs"
+  on public.strategy_logs
+  for update
+  to authenticated
+  using (auth.uid() = author_id)
+  with check (auth.uid() = author_id);
+
 drop policy if exists "delete own strategy logs" on public.strategy_logs;
 create policy "delete own strategy logs"
   on public.strategy_logs
   for delete
   to authenticated
   using (auth.uid() = author_id);
+
+drop policy if exists "read user profiles" on public.user_profiles;
+create policy "read user profiles"
+  on public.user_profiles
+  for select
+  using (true);
+
+drop policy if exists "insert own user profile" on public.user_profiles;
+create policy "insert own user profile"
+  on public.user_profiles
+  for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+drop policy if exists "update own user profile" on public.user_profiles;
+create policy "update own user profile"
+  on public.user_profiles
+  for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "delete own user profile" on public.user_profiles;
+create policy "delete own user profile"
+  on public.user_profiles
+  for delete
+  to authenticated
+  using (auth.uid() = user_id);
 
 drop policy if exists "read log votes" on public.log_votes;
 create policy "read log votes"

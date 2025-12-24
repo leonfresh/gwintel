@@ -21,6 +21,9 @@ export default function UsernameSetupModal({ open, onComplete }: Props) {
       return;
     }
 
+    const desired = username.trim();
+    const desiredLower = desired.toLowerCase();
+
     setLoading(true);
     setError("");
 
@@ -39,14 +42,49 @@ export default function UsernameSetupModal({ open, onComplete }: Props) {
         return;
       }
 
+      // Check username availability (case-insensitive)
+      const { data: existingProfile, error: existsError } = await client
+        .from("user_profiles")
+        .select("user_id")
+        .eq("username_lower", desiredLower)
+        .maybeSingle();
+
+      if (existsError) {
+        setError(existsError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (existingProfile && existingProfile.user_id !== userData.user.id) {
+        setError("That username is already taken.");
+        setLoading(false);
+        return;
+      }
+
       const { error: updateError } = await client.auth.updateUser({
         data: {
-          ingame_name: username.trim(),
+          ingame_name: desired,
         },
       });
 
       if (updateError) {
         setError(updateError.message);
+        setLoading(false);
+        return;
+      }
+
+      // Register/refresh username in public table
+      const { error: upsertError } = await client.from("user_profiles").upsert(
+        {
+          user_id: userData.user.id,
+          username: desired,
+        },
+        { onConflict: "user_id" }
+      );
+
+      if (upsertError) {
+        // Could be a uniqueness violation on username_lower
+        setError(upsertError.message);
         setLoading(false);
         return;
       }
@@ -95,7 +133,10 @@ export default function UsernameSetupModal({ open, onComplete }: Props) {
               </span>
               <input
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (error) setError("");
+                }}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 className="w-full px-4 py-3 rounded-xl bg-slate-800 border-2 border-slate-700 focus:border-blue-500 text-white text-lg font-bold transition-colors"
                 type="text"

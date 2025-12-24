@@ -67,15 +67,36 @@ export default function AuthModal({
       setStatus("Email and password are required.");
       return;
     }
+
+    const desired = ingameName.trim();
+    const desiredLower = desired.toLowerCase();
+    if (desired) {
+      const { data: existing, error: existsError } = await supabase
+        .from("user_profiles")
+        .select("user_id")
+        .eq("username_lower", desiredLower)
+        .maybeSingle();
+
+      if (existsError) {
+        setStatus(existsError.message);
+        return;
+      }
+
+      if (existing) {
+        setStatus("That in-game name is already taken.");
+        return;
+      }
+    }
+
     setLoading(true);
     setStatus("");
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          ingame_name: ingameName.trim() || null,
+          ingame_name: desired || null,
         },
         emailRedirectTo: undefined, // Skip email confirmation
       },
@@ -85,6 +106,24 @@ export default function AuthModal({
     if (error) {
       setStatus(error.message);
       return;
+    }
+
+    // Register username in public table (best-effort)
+    if (desired && data.user?.id) {
+      const { error: upsertError } = await supabase
+        .from("user_profiles")
+        .upsert(
+          {
+            user_id: data.user.id,
+            username: desired,
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (upsertError) {
+        setStatus(upsertError.message);
+        return;
+      }
     }
     setStatus("Account created! You're now signed in.");
   };
