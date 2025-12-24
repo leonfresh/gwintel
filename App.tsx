@@ -12,7 +12,6 @@ import ConfirmModal from "./components/ConfirmModal";
 import { getSupabaseBrowserClient } from "./lib/supabase/browserClient";
 import { HERO_DATABASE } from "./constants";
 import { HeroHoverProvider } from "./components/HeroHoverProvider";
-
 type DbStrategyLogRow = {
   id: string;
   enemy_team: string[];
@@ -1115,7 +1114,7 @@ const App: React.FC = () => {
 
             <div className="flex items-center gap-3">
               <a
-                href="/triple-triad"
+                href="/counter-quiz"
                 className="px-4 py-2 bg-slate-900/30 glass hover:bg-slate-900/45 text-slate-200 hover:text-white font-bold text-sm rounded-xl border border-white/10 transition-all flex items-center gap-2"
               >
                 <svg
@@ -1131,8 +1130,8 @@ const App: React.FC = () => {
                     d="M7 7h10M7 12h10M7 17h10"
                   />
                 </svg>
-                <span className="hidden sm:inline">Triple Triad</span>
-                <span className="sm:hidden">Game</span>
+                <span className="hidden sm:inline">Counter Quiz</span>
+                <span className="sm:hidden">Quiz</span>
               </a>
               {authEmail ? (
                 <>
