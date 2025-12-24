@@ -64,6 +64,12 @@ interface AddLogState {
   skillQueue?: SkillQueueItem[];
 }
 
+type ShareFocusState = {
+  squadKey: string | null;
+  counterIds: string[];
+  logId: string | null;
+};
+
 const App: React.FC = () => {
   const [logs, setLogs] = useState<StrategyLog[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -129,6 +135,71 @@ const App: React.FC = () => {
   const [compactView, setCompactView] = useState<boolean>(false);
   const [cardView, setCardView] = useState<boolean>(false);
   const [expandedSquadKey, setExpandedSquadKey] = useState<string | null>(null);
+  const [shareFocus, setShareFocus] = useState<ShareFocusState>({
+    squadKey: null,
+    counterIds: [],
+    logId: null,
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const heroIdSet = new Set(HERO_DATABASE.map((h) => h.id));
+    const parseIds = (raw: string | null): string[] => {
+      if (!raw) return [];
+      return raw
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .filter((id) => heroIdSet.has(id));
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const squadIds = parseIds(params.get("squad"));
+    const counterIds = parseIds(params.get("counter"));
+    const logIdRaw = params.get("log");
+
+    if (squadIds.length > 0) {
+      const squadKey = [...squadIds].sort().join(",");
+      setShareFocus({
+        squadKey,
+        counterIds,
+        logId:
+          typeof logIdRaw === "string" && logIdRaw.length > 0 ? logIdRaw : null,
+      });
+
+      setActiveTab("reports");
+      setCardView(false);
+      setExpandedSquadKey(null);
+      setFilterHeroIds([]);
+      setTypeFilter("all");
+      setMinVotes(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!shareFocus.squadKey) return;
+    if (activeTab !== "reports") return;
+    if (cardView) return;
+
+    const attemptScroll = () => {
+      const squadEl = document.getElementById(`squad-${shareFocus.squadKey}`);
+      if (!squadEl) return false;
+
+      squadEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (shareFocus.logId) {
+        window.setTimeout(() => {
+          const logEl = document.getElementById(`log-${shareFocus.logId}`);
+          logEl?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 250);
+      }
+      return true;
+    };
+
+    if (attemptScroll()) return;
+    const t = window.setTimeout(() => attemptScroll(), 400);
+    return () => window.clearTimeout(t);
+  }, [activeTab, cardView, logs.length, shareFocus.logId, shareFocus.squadKey]);
 
   useEffect(() => {
     const client = getSupabaseBrowserClient();
@@ -1482,6 +1553,7 @@ const App: React.FC = () => {
                                 </button>
                               </div>
                               <StrategyCard
+                                squadKey={key}
                                 enemyIds={enemyIds}
                                 logs={logs}
                                 squadVotes={squadVotes[key] || 0}
@@ -1489,6 +1561,7 @@ const App: React.FC = () => {
                                 compactView={false}
                                 currentUserId={authUserId}
                                 currentUserName={authDisplayName}
+                                highlightLogId={shareFocus.logId}
                                 onVote={handleVote}
                                 onSquadVote={(type) =>
                                   handleSquadVote(key, type)
@@ -1566,6 +1639,7 @@ const App: React.FC = () => {
                           className="transition-all duration-300"
                         >
                           <StrategyCard
+                            squadKey={key}
                             enemyIds={firstLog.enemyTeam}
                             logs={logs}
                             squadVotes={squadVotes[key] || 0}
@@ -1573,6 +1647,7 @@ const App: React.FC = () => {
                             compactView={compactView}
                             currentUserId={authUserId}
                             currentUserName={authDisplayName}
+                            highlightLogId={shareFocus.logId}
                             onVote={handleVote}
                             onSquadVote={(type) => handleSquadVote(key, type)}
                             onAddLog={openAddLog}

@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { toPng } from "html-to-image";
 import { StrategyLog, LogType, SkillQueueItem } from "../types";
 import { HERO_DATABASE } from "../constants";
 import HeroHoverCard from "./HeroHoverCard";
 
 interface Props {
+  squadKey: string;
   enemyIds: string[];
   logs: StrategyLog[];
   squadVotes: number;
@@ -11,6 +13,7 @@ interface Props {
   compactView: boolean;
   currentUserId: string | null;
   currentUserName?: string | null;
+  highlightLogId?: string | null;
   onVote: (id: string, type: "up" | "down") => void;
   onSquadVote: (type: "up" | "down") => void;
   onAddLog: (enemyIds: string[], type: LogType) => void;
@@ -21,6 +24,7 @@ interface Props {
 }
 
 const StrategyCard: React.FC<Props> = ({
+  squadKey,
   enemyIds,
   logs,
   squadVotes,
@@ -28,6 +32,7 @@ const StrategyCard: React.FC<Props> = ({
   compactView,
   currentUserId,
   currentUserName,
+  highlightLogId,
   onVote,
   onSquadVote,
   onAddLog,
@@ -36,6 +41,10 @@ const StrategyCard: React.FC<Props> = ({
   onUpdateEnemyTeamOrder,
   onUpdateLogCounterTeam,
 }) => {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
   const [mobileExpandSuccess, setMobileExpandSuccess] = useState(false);
   const [mobileExpandFail, setMobileExpandFail] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
@@ -45,6 +54,68 @@ const StrategyCard: React.FC<Props> = ({
   const isIcewind = currentUserName === "Icewind";
 
   const getHero = (id: string) => HERO_DATABASE.find((h) => h.id === id);
+
+  const buildShareUrl = (opts?: { counterIds?: string[]; logId?: string }) => {
+    const params = new URLSearchParams();
+    params.set("squad", squadKey);
+    if (opts?.counterIds && opts.counterIds.length > 0) {
+      params.set("counter", opts.counterIds.join(","));
+    }
+    if (opts?.logId) params.set("log", opts.logId);
+    return `${window.location.origin}/?${params.toString()}`;
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.top = "-1000px";
+        ta.style.left = "-1000px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  };
+
+  const handleCopySquadLink = async (opts?: {
+    counterIds?: string[];
+    logId?: string;
+  }) => {
+    const url = buildShareUrl(opts);
+    const ok = await copyToClipboard(url);
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    }
+  };
+
+  const handleExportPng = async () => {
+    if (!cardRef.current) return;
+    setExporting(true);
+    try {
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `squad-${squadKey.replaceAll(",", "-")}.png`;
+      a.click();
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleImageError = (heroId: string) => {
     setImageErrors((prev) => ({ ...prev, [heroId]: true }));
@@ -228,6 +299,27 @@ const StrategyCard: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* Share / Export */}
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={() => handleCopySquadLink()}
+          className="px-4 py-2 bg-slate-900/40 glass hover:bg-slate-900/55 text-slate-200 rounded-xl text-[10px] font-black transition-all border border-white/10 uppercase tracking-widest"
+          title="Copy share link"
+        >
+          {copied ? "COPIED" : "COPY LINK"}
+        </button>
+        <button
+          type="button"
+          onClick={handleExportPng}
+          disabled={exporting}
+          className="px-4 py-2 bg-slate-900/40 glass hover:bg-slate-900/55 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 rounded-xl text-[10px] font-black transition-all border border-white/10 uppercase tracking-widest"
+          title="Export this squad card as PNG"
+        >
+          {exporting ? "EXPORTING" : "EXPORT PNG"}
+        </button>
+      </div>
+
       <div className="flex-1">
         {/* Mobile: keep 3 icons on a single row */}
         <div className="md:hidden flex items-center justify-center gap-2 flex-nowrap">
@@ -381,6 +473,7 @@ const StrategyCard: React.FC<Props> = ({
     const isOwnPost = Boolean(currentUserId && log.authorId === currentUserId);
     const tintClass =
       log.type === "success" ? "log-tint-success" : "log-tint-fail";
+    const isHighlighted = Boolean(highlightLogId && log.id === highlightLogId);
 
     const SkillQueueRow: React.FC<{ queue: SkillQueueItem[] }> = ({
       queue,
@@ -442,7 +535,10 @@ const StrategyCard: React.FC<Props> = ({
 
     return (
       <div
-        className={`relative overflow-hidden p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl ${tintClass}`}
+        id={`log-${log.id}`}
+        className={`relative overflow-hidden p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl ${tintClass} ${
+          isHighlighted ? "ring-2 ring-blue-500/35" : ""
+        }`}
       >
         <div className="flex justify-between items-start gap-6">
           <div className="flex items-start gap-5 flex-1">
@@ -466,7 +562,7 @@ const StrategyCard: React.FC<Props> = ({
                     onDragStart={(e) =>
                       handleCounterDragStart(e, index, log.id)
                     }
-                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragOver={(e) => handleDragOver(e)}
                     onDrop={(e) => handleCounterDrop(e, index, log)}
                     className={
                       isIcewind ? "cursor-move active:cursor-grabbing" : ""
@@ -555,58 +651,94 @@ const StrategyCard: React.FC<Props> = ({
                   Intel by <span className="text-blue-400">{log.author}</span>
                 </div>
               </div>
-              {isOwnPost && (
-                <div className="flex items-center gap-3 mt-2">
-                  <button
-                    onClick={() => onEditLog(log)}
-                    className="flex items-center gap-1 text-slate-500 hover:text-blue-400 transition-all transform hover:scale-105 active:scale-95 text-xs font-bold"
-                    title="Edit your post"
-                    aria-label="Edit your post"
+              <div className="flex items-center gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCopySquadLink({
+                      counterIds: log.counterTeam,
+                      logId: log.id,
+                    })
+                  }
+                  className="flex items-center gap-1 text-slate-500 hover:text-blue-400 transition-all transform hover:scale-105 active:scale-95 text-xs font-bold"
+                  title="Copy share link (includes enemy + counter team)"
+                  aria-label="Copy share link"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.5"
+                      d="M10 13a5 5 0 007.07 0l1.41-1.41a5 5 0 00-7.07-7.07L10 4"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.5"
+                      d="M14 11a5 5 0 01-7.07 0L5.5 9.59a5 5 0 017.07-7.07L14 4"
+                    />
+                  </svg>
+                  <span>Share</span>
+                </button>
+
+                {isOwnPost && (
+                  <>
+                    <button
+                      onClick={() => onEditLog(log)}
+                      className="flex items-center gap-1 text-slate-500 hover:text-blue-400 transition-all transform hover:scale-105 active:scale-95 text-xs font-bold"
+                      title="Edit your post"
+                      aria-label="Edit your post"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2.5"
-                        d="M11 4h-3a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2.5"
-                        d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                      />
-                    </svg>
-                    <span>Edit</span>
-                  </button>
-                  <button
-                    onClick={() => onDeleteLog(log.id)}
-                    className="flex items-center gap-1 text-slate-500 hover:text-rose-400 transition-all transform hover:scale-105 active:scale-95 text-xs font-bold"
-                    title="Delete your post"
-                    aria-label="Delete your post"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2.5"
+                          d="M11 4h-3a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2.5"
+                          d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                        />
+                      </svg>
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={() => onDeleteLog(log.id)}
+                      className="flex items-center gap-1 text-slate-500 hover:text-rose-400 transition-all transform hover:scale-105 active:scale-95 text-xs font-bold"
+                      title="Delete your post"
+                      aria-label="Delete your post"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="3"
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                    <span>Delete</span>
-                  </button>
-                </div>
-              )}
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="3"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                      <span>Delete</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -648,7 +780,10 @@ const StrategyCard: React.FC<Props> = ({
   };
 
   return (
-    <div className="bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">
+    <div
+      ref={cardRef}
+      className="bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors"
+    >
       <EnemySquadHeader />
       <div
         className={
