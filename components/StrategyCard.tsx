@@ -271,8 +271,8 @@ const StrategyCard: React.FC<Props> = ({
 
   const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => {
     const isOwnPost = Boolean(currentUserId && log.authorId === currentUserId);
-    const leftTintFrom =
-      log.type === "success" ? "from-emerald-500/18" : "from-rose-500/18";
+    const tintClass =
+      log.type === "success" ? "log-tint-success" : "log-tint-fail";
 
     const SkillQueueRow: React.FC<{ queue: SkillQueueItem[] }> = ({
       queue,
@@ -280,20 +280,20 @@ const StrategyCard: React.FC<Props> = ({
       if (!queue || queue.length === 0) return null;
 
       return (
-        <div className="flex items-center gap-3">
-          <div className="text-[11px] font-black uppercase tracking-widest text-blue-300 shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-[11px] font-black uppercase tracking-widest text-blue-300">
             Skill Queue
           </div>
-          <div className="flex items-center gap-2 flex-nowrap overflow-x-auto py-1">
+          <div className="flex flex-wrap items-center gap-2">
             {queue.slice(0, 3).map((s, idx) => {
               const hero = getHero(s.heroId);
               const badge = s.skill === "top" ? "T" : "B";
               return (
                 <div
                   key={`${s.heroId}-${idx}`}
-                  className="flex items-center gap-2 shrink-0"
+                  className="flex items-center gap-2"
                 >
-                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-xl border border-white/10 bg-slate-950/20 glass text-slate-200 text-xs font-black whitespace-nowrap">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-xl border border-white/10 bg-slate-950/20 glass text-slate-200 text-xs font-black">
                     <span className="w-5 h-5 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center text-[10px]">
                       {hero ? (
                         imageErrors[hero.id] ? (
@@ -320,7 +320,7 @@ const StrategyCard: React.FC<Props> = ({
                     </span>
                   </span>
                   {idx < Math.min(queue.length, 3) - 1 ? (
-                    <span className="text-slate-600 text-xs font-black shrink-0">
+                    <span className="text-slate-600 text-xs font-black">
                       &gt;
                     </span>
                   ) : null}
@@ -333,120 +333,65 @@ const StrategyCard: React.FC<Props> = ({
     };
 
     return (
-      <div className="relative overflow-hidden p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl">
-        <div
-          className={`hidden md:block pointer-events-none absolute inset-y-0 left-0 w-28 bg-gradient-to-r ${leftTintFrom} to-transparent`}
-          aria-hidden="true"
-        />
-
-        {isOwnPost ? (
-          <div className="absolute top-4 right-4 z-20 flex flex-col items-center gap-2 bg-slate-900/70 glass rounded-xl border border-white/10 px-2 py-2">
-            <button
-              onClick={() => onEditLog(log)}
-              className="text-slate-500 hover:text-blue-400 transition-all transform hover:scale-110 active:scale-95"
-              title="Edit your post"
-              aria-label="Edit your post"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                  d="M11 4h-3a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                  d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={() => onDeleteLog(log.id)}
-              className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-110 active:scale-95"
-              title="Delete your post"
-              aria-label="Delete your post"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="3"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        ) : null}
-
-        <div className="relative flex items-start gap-5">
-          {/* Desktop: stacked hero icons */}
-          <div className="hidden md:flex flex-col gap-2">
-            {log.counterTeam.slice(0, 3).map((id) => {
-              const hero = getHero(id);
-              if (!hero) return null;
-              const ring =
-                log.type === "success"
-                  ? "border-emerald-400/30"
-                  : "border-rose-400/30";
-              const border =
-                hero.attackType === "Magic"
-                  ? "border-blue-500/50"
-                  : "border-orange-500/50";
-              return (
-                <HeroHoverCard key={id} hero={hero}>
-                  <div
-                    tabIndex={0}
-                    className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform`}
-                  >
-                    {!imageErrors[id] ? (
-                      <img
-                        src={`/heroes/${id}.png`}
-                        alt={hero.name}
-                        className="w-full h-full object-cover"
-                        onError={() => handleImageError(id)}
-                      />
-                    ) : (
-                      <span className="text-white font-black text-sm text-center leading-none px-1">
-                        {hero.name}
-                      </span>
-                    )}
-                    <span className="sr-only">{hero.name}</span>
-                    <span className={`sr-only ${ring}`}></span>
-                  </div>
-                </HeroHoverCard>
-              );
-            })}
-          </div>
-
-          <div className="flex-1 space-y-4">
-            {/* Mobile: chips */}
-            <div className="flex flex-wrap gap-2 md:hidden">
-              {log.counterTeam.map((id) => (
-                <HeroNameChip
-                  key={id}
-                  heroId={id}
-                  tone={log.type === "success" ? "success" : "fail"}
-                />
-              ))}
+      <div
+        className={`relative overflow-hidden p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl ${tintClass}`}
+      >
+        <div className="flex justify-between items-start gap-6">
+          <div className="flex items-start gap-5 flex-1">
+            {/* Desktop: stacked hero icons */}
+            <div className="hidden md:flex flex-col gap-2">
+              {log.counterTeam.slice(0, 3).map((id) => {
+                const hero = getHero(id);
+                if (!hero) return null;
+                const ring =
+                  log.type === "success"
+                    ? "border-emerald-400/30"
+                    : "border-rose-400/30";
+                const border =
+                  hero.attackType === "Magic"
+                    ? "border-blue-500/50"
+                    : "border-orange-500/50";
+                return (
+                  <HeroHoverCard key={id} hero={hero}>
+                    <div
+                      tabIndex={0}
+                      className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform`}
+                    >
+                      {!imageErrors[id] ? (
+                        <img
+                          src={`/heroes/${id}.png`}
+                          alt={hero.name}
+                          className="w-full h-full object-cover"
+                          onError={() => handleImageError(id)}
+                        />
+                      ) : (
+                        <span className="text-white font-black text-sm text-center leading-none px-1">
+                          {hero.name}
+                        </span>
+                      )}
+                      <span className="sr-only">{hero.name}</span>
+                      <span className={`sr-only ${ring}`}></span>
+                    </div>
+                  </HeroHoverCard>
+                );
+              })}
             </div>
 
-            <SkillQueueRow queue={log.skillQueue || []} />
-            <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
-              “{log.notes || "No specific tactics recorded."}”
-            </p>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 space-y-4 pb-10">
+              {/* Mobile: chips */}
+              <div className="flex flex-wrap gap-2 md:hidden">
+                {log.counterTeam.map((id) => (
+                  <HeroNameChip
+                    key={id}
+                    heroId={id}
+                    tone={log.type === "success" ? "success" : "fail"}
+                  />
+                ))}
+              </div>
+
+              <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
+                “{log.notes || "No specific tactics recorded."}”
+              </p>
               <div className="flex items-center gap-2">
                 <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-black text-white">
                   {log.author.charAt(0).toUpperCase()}
@@ -455,48 +400,92 @@ const StrategyCard: React.FC<Props> = ({
                   Intel by <span className="text-blue-400">{log.author}</span>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-900/80 glass px-2 py-1">
+          <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-900/80 glass py-2 rounded-xl border border-white/10">
+            {isOwnPost ? (
+              <div className="flex flex-col items-center gap-1 mb-1">
                 <button
-                  onClick={() => onVote(log.id, "up")}
-                  className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
-                  aria-label="Upvote"
-                  title="Upvote"
+                  onClick={() => onEditLog(log)}
+                  className="text-slate-500 hover:text-blue-400 transition-all transform hover:scale-110 active:scale-95"
+                  title="Edit your post"
+                  aria-label="Edit your post"
                 >
                   <svg
                     className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <path d="M14.707 9.293l-4-4a1 1 0 00-1.414 0l-4 4a1 1 0 101.414 1.414L9 8.414V15a1 1 0 102 0V8.414l2.293 2.293a1 1 0 001.414-1.414z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.5"
+                      d="M11 4h-3a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.5"
+                      d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                    />
                   </svg>
                 </button>
-                <span
-                  className={`text-xs font-black italic px-1 ${
-                    log.votes >= 0 ? "text-emerald-400" : "text-rose-400"
-                  }`}
-                  title="Votes"
-                >
-                  {log.votes > 0 ? `+${log.votes}` : log.votes}
-                </span>
                 <button
-                  onClick={() => onVote(log.id, "down")}
-                  className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-125 active:scale-95"
-                  aria-label="Downvote"
-                  title="Downvote"
+                  onClick={() => onDeleteLog(log.id)}
+                  className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-110 active:scale-95"
+                  title="Delete your post"
+                  aria-label="Delete your post"
                 >
                   <svg
                     className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    <path d="M5.293 10.707l4 4a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 11.586V5a1 1 0 10-2 0v6.586L6.707 9.293a1 1 0 00-1.414 1.414z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="3"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
-            </div>
+            ) : null}
+            <button
+              onClick={() => onVote(log.id, "up")}
+              className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M14.707 9.293l-4-4a1 1 0 00-1.414 0l-4 4a1 1 0 101.414 1.414L9 8.414V15a1 1 0 102 0V8.414l2.293 2.293a1 1 0 001.414-1.414z" />
+              </svg>
+            </button>
+            <span
+              className={`text-sm font-black italic ${
+                log.votes >= 0 ? "text-emerald-400" : "text-rose-400"
+              }`}
+            >
+              {log.votes > 0 ? `+${log.votes}` : log.votes}
+            </span>
+            <button
+              onClick={() => onVote(log.id, "down")}
+              className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-125 active:scale-95"
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M5.293 10.707l4 4a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 11.586V5a1 1 0 10-2 0v6.586L6.707 9.293a1 1 0 00-1.414 1.414z" />
+              </svg>
+            </button>
           </div>
         </div>
+
+        {/* Skill Queue - positioned at bottom */}
+        {log.skillQueue && log.skillQueue.length > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-3 overflow-x-auto overflow-y-hidden scrollbar-hide">
+            <SkillQueueRow queue={log.skillQueue} />
+          </div>
+        )}
       </div>
     );
   };
@@ -698,3 +687,47 @@ const StrategyCard: React.FC<Props> = ({
 };
 
 export default StrategyCard;
+
+// Scoped styles for log card gradient tint
+const styles = `
+  @media (min-width: 768px) {
+    .log-tint-success::before,
+    .log-tint-fail::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 7rem;
+      background: linear-gradient(to right, var(--tint-color), transparent);
+      pointer-events: none;
+    }
+    
+    .log-tint-success::before {
+      --tint-color: rgba(16, 185, 129, 0.18);
+    }
+    
+    .log-tint-fail::before {
+      --tint-color: rgba(244, 63, 94, 0.18);
+    }
+  }
+  
+  /* Hide scrollbar for skill queue row */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+`;
+
+if (
+  typeof document !== "undefined" &&
+  !document.getElementById("strategy-card-styles")
+) {
+  const styleEl = document.createElement("style");
+  styleEl.id = "strategy-card-styles";
+  styleEl.textContent = styles;
+  document.head.appendChild(styleEl);
+}
