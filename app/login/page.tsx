@@ -6,9 +6,11 @@ import { getSupabaseBrowserClient } from "../../lib/supabase/browserClient";
 export default function LoginPage() {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   useEffect(() => {
     if (!supabase) {
@@ -35,16 +37,20 @@ export default function LoginPage() {
     };
   }, [supabase]);
 
-  const sendMagicLink = async () => {
+  const handleSignUp = async () => {
     if (!supabase) return;
+    if (!email || !password) {
+      setStatus("Email and password are required.");
+      return;
+    }
     setLoading(true);
     setStatus("");
 
-    const redirectTo = `${window.location.origin}/auth/callback`;
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signUp({
       email,
+      password,
       options: {
-        emailRedirectTo: redirectTo,
+        emailRedirectTo: undefined, // Skip email confirmation
       },
     });
 
@@ -53,7 +59,29 @@ export default function LoginPage() {
       setStatus(error.message);
       return;
     }
-    setStatus("Magic link sent. Check your email.");
+    setStatus("Account created! You're now signed in.");
+  };
+
+  const handleSignIn = async () => {
+    if (!supabase) return;
+    if (!email || !password) {
+      setStatus("Email and password are required.");
+      return;
+    }
+    setLoading(true);
+    setStatus("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setLoading(false);
+    if (error) {
+      setStatus(error.message);
+      return;
+    }
+    setStatus("Signed in successfully!");
   };
 
   const signOut = async () => {
@@ -101,26 +129,43 @@ export default function LoginPage() {
             />
           </label>
 
-          <p className="text-sm text-white/70">
-            We’ll email you a magic link to sign in.
-          </p>
+          <label className="block">
+            <span className="text-slate-300 text-sm font-semibold">
+              Password
+            </span>
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
+              type="password"
+              autoComplete={isSignUp ? "new-password" : "current-password"}
+            />
+          </label>
 
           <button
-            onClick={sendMagicLink}
-            disabled={loading || !email}
+            onClick={isSignUp ? handleSignUp : handleSignIn}
+            disabled={loading || !email || !password}
             className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-black rounded-xl"
           >
-            Send magic link
+            {isSignUp ? "Sign up" : "Sign in"}
+          </button>
+
+          <button
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setStatus("");
+            }}
+            disabled={loading}
+            className="w-full px-6 py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 text-white font-bold rounded-xl border border-slate-700"
+          >
+            {isSignUp
+              ? "Already have an account? Sign in"
+              : "Need an account? Sign up"}
           </button>
         </div>
       )}
 
       {status ? <p className="mt-6 text-slate-300">{status}</p> : null}
-
-      <p className="mt-10 text-slate-500 text-sm">
-        If you don’t receive emails, check Supabase Auth URL settings (Site URL
-        + redirect allowlist) and email delivery.
-      </p>
     </div>
   );
 }
