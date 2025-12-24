@@ -88,6 +88,13 @@ create policy "insert strategy logs"
   to authenticated
   with check (auth.uid() = author_id);
 
+drop policy if exists "delete own strategy logs" on public.strategy_logs;
+create policy "delete own strategy logs"
+  on public.strategy_logs
+  for delete
+  to authenticated
+  using (auth.uid() = author_id);
+
 drop policy if exists "read log votes" on public.log_votes;
 create policy "read log votes"
   on public.log_votes

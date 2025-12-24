@@ -8,9 +8,12 @@ interface Props {
   squadVotes: number;
   squadCreator: string;
   compactView: boolean;
+  currentUserId: string | null;
   onVote: (id: string, type: "up" | "down") => void;
   onSquadVote: (type: "up" | "down") => void;
   onAddLog: (enemyIds: string[], type: LogType) => void;
+  onDeleteLog: (id: string) => void;
+  onEditLog: (log: StrategyLog) => void;
 }
 
 const StrategyCard: React.FC<Props> = ({
@@ -19,9 +22,12 @@ const StrategyCard: React.FC<Props> = ({
   squadVotes,
   squadCreator,
   compactView,
+  currentUserId,
   onVote,
   onSquadVote,
   onAddLog,
+  onDeleteLog,
+  onEditLog,
 }) => {
   const [mobileExpandSuccess, setMobileExpandSuccess] = useState(false);
   const [mobileExpandFail, setMobileExpandFail] = useState(false);
@@ -219,6 +225,13 @@ const StrategyCard: React.FC<Props> = ({
                   {hero.tier}
                 </div>
               </div>
+              <div
+                className={`text-[10px] font-bold text-slate-300 text-center leading-tight max-w-[5.5rem] ${
+                  isTopThree ? "" : "opacity-80"
+                }`}
+              >
+                {hero.name}
+              </div>
             </div>
           ) : null;
         })}
@@ -247,60 +260,114 @@ const StrategyCard: React.FC<Props> = ({
     </div>
   );
 
-  const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => (
-    <div className="p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all hover:bg-slate-900/75 shadow-sm hover:shadow-xl">
-      <div className="flex justify-between items-start gap-6">
-        <div className="flex-1 space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {log.counterTeam.map((id) => (
-              <HeroNameChip
-                key={id}
-                heroId={id}
-                tone={log.type === "success" ? "success" : "fail"}
-              />
-            ))}
-          </div>
-          <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
-            “{log.notes || "No specific tactics recorded."}”
-          </p>
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-black text-white">
-              {log.author.charAt(0).toUpperCase()}
-            </div>
-            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-              Intel by <span className="text-blue-400">{log.author}</span>
-            </div>
-          </div>
-        </div>
+  const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => {
+    const isOwnPost = Boolean(currentUserId && log.authorId === currentUserId);
 
-        <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-900/80 glass py-2 rounded-xl border border-white/10">
-          <button
-            onClick={() => onVote(log.id, "up")}
-            className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
-          >
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M14.707 9.293l-4-4a1 1 0 00-1.414 0l-4 4a1 1 0 101.414 1.414L9 8.414V15a1 1 0 102 0V8.414l2.293 2.293a1 1 0 001.414-1.414z" />
-            </svg>
-          </button>
-          <span
-            className={`text-sm font-black italic ${
-              log.votes >= 0 ? "text-emerald-400" : "text-rose-400"
-            }`}
-          >
-            {log.votes > 0 ? `+${log.votes}` : log.votes}
-          </span>
-          <button
-            onClick={() => onVote(log.id, "down")}
-            className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-125 active:scale-95"
-          >
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M5.293 10.707l4 4a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 11.586V5a1 1 0 10-2 0v6.586L6.707 9.293a1 1 0 00-1.414 1.414z" />
-            </svg>
-          </button>
+    return (
+      <div className="p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all hover:bg-slate-900/75 shadow-sm hover:shadow-xl">
+        <div className="flex justify-between items-start gap-6">
+          <div className="flex-1 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {log.counterTeam.map((id) => (
+                <HeroNameChip
+                  key={id}
+                  heroId={id}
+                  tone={log.type === "success" ? "success" : "fail"}
+                />
+              ))}
+            </div>
+            <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
+              “{log.notes || "No specific tactics recorded."}”
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-black text-white">
+                {log.author.charAt(0).toUpperCase()}
+              </div>
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                Intel by <span className="text-blue-400">{log.author}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-900/80 glass py-2 rounded-xl border border-white/10">
+            {isOwnPost ? (
+              <div className="flex flex-col items-center gap-1 mb-1">
+                <button
+                  onClick={() => onEditLog(log)}
+                  className="text-slate-500 hover:text-blue-400 transition-all transform hover:scale-110 active:scale-95"
+                  title="Edit your post"
+                  aria-label="Edit your post"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.5"
+                      d="M11 4h-3a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2.5"
+                      d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onDeleteLog(log.id)}
+                  className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-110 active:scale-95"
+                  title="Delete your post"
+                  aria-label="Delete your post"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="3"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ) : null}
+            <button
+              onClick={() => onVote(log.id, "up")}
+              className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M14.707 9.293l-4-4a1 1 0 00-1.414 0l-4 4a1 1 0 101.414 1.414L9 8.414V15a1 1 0 102 0V8.414l2.293 2.293a1 1 0 001.414-1.414z" />
+              </svg>
+            </button>
+            <span
+              className={`text-sm font-black italic ${
+                log.votes >= 0 ? "text-emerald-400" : "text-rose-400"
+              }`}
+            >
+              {log.votes > 0 ? `+${log.votes}` : log.votes}
+            </span>
+            <button
+              onClick={() => onVote(log.id, "down")}
+              className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-125 active:scale-95"
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M5.293 10.707l4 4a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 11.586V5a1 1 0 10-2 0v6.586L6.707 9.293a1 1 0 00-1.414 1.414z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="bg-slate-900/60 glass rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">

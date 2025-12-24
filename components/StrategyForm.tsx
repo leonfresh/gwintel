@@ -10,6 +10,8 @@ interface Props {
   onCancel: () => void;
   initialEnemyTeam?: string[];
   initialType?: LogType;
+  initialCounterTeam?: string[];
+  initialNotes?: string;
 }
 
 const StrategyForm: React.FC<Props> = ({
@@ -17,6 +19,8 @@ const StrategyForm: React.FC<Props> = ({
   onCancel,
   initialEnemyTeam,
   initialType,
+  initialCounterTeam,
+  initialNotes,
 }) => {
   const [enemyTeam, setEnemyTeam] = useState<Hero[]>([]);
   const [counterTeam, setCounterTeam] = useState<Hero[]>([]);
@@ -31,6 +35,23 @@ const StrategyForm: React.FC<Props> = ({
       setEnemyTeam(heroes);
     }
   }, [initialEnemyTeam]);
+
+  useEffect(() => {
+    if (initialType) setType(initialType);
+  }, [initialType]);
+
+  useEffect(() => {
+    if (initialCounterTeam) {
+      const heroes = initialCounterTeam
+        .map((id) => HERO_DATABASE.find((h) => h.id === id))
+        .filter(Boolean) as Hero[];
+      setCounterTeam(heroes);
+    }
+  }, [initialCounterTeam]);
+
+  useEffect(() => {
+    if (typeof initialNotes === "string") setNotes(initialNotes);
+  }, [initialNotes]);
 
   const handleAddEnemy = (hero: Hero) => {
     if (enemyTeam.length < 3 && !enemyTeam.find((h) => h.id === hero.id)) {

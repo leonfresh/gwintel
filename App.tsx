@@ -30,6 +30,7 @@ function toStrategyLog(row: DbStrategyLogRow): StrategyLog {
     type: row.type,
     notes: row.notes,
     votes: row.votes,
+    authorId: row.author_id,
     author: row.author_name || row.author_email || "Unknown",
     createdAt: new Date(row.created_at).getTime(),
   };
@@ -38,6 +39,9 @@ function toStrategyLog(row: DbStrategyLogRow): StrategyLog {
 interface AddLogState {
   enemyIds?: string[];
   type?: LogType;
+  editLogId?: string;
+  counterIds?: string[];
+  notes?: string;
 }
 
 const App: React.FC = () => {
@@ -51,6 +55,7 @@ const App: React.FC = () => {
   >("generic");
   const [loading, setLoading] = useState(true);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [authDisplayName, setAuthDisplayName] = useState<string | null>(null);
   const [supabaseReady, setSupabaseReady] = useState(true);
   const [showUsernameSetup, setShowUsernameSetup] = useState(false);
@@ -87,6 +92,7 @@ const App: React.FC = () => {
       const sessionUser = sessionData.session?.user ?? null;
       const user = userData.user ?? sessionUser;
       setAuthEmail(user?.email ?? null);
+      setAuthUserId(user?.id ?? null);
 
       const ingameName =
         typeof user?.user_metadata?.ingame_name === "string"
@@ -137,6 +143,7 @@ const App: React.FC = () => {
       async (_event, session) => {
         const user = session?.user ?? null;
         setAuthEmail(user?.email ?? null);
+        setAuthUserId(user?.id ?? null);
 
         const ingameName =
           typeof user?.user_metadata?.ingame_name === "string"
@@ -176,32 +183,37 @@ const App: React.FC = () => {
     const client = getSupabaseBrowserClient();
     if (!client) return;
 
-    // Check if squad already exists
-    const squadKey = [...data.enemyTeam].sort().join(",");
-    const existingSquad = groupedLogs.find(([key]) => key === squadKey);
+    // Only prevent duplicates when creating a NEW squad report.
+    // When adding a counter/fail to an existing squad (enemyIds preselected), duplicates are allowed.
+    const isNewSquadReport =
+      !addState.enemyIds || addState.enemyIds.length === 0;
+    if (isNewSquadReport) {
+      const squadKey = [...data.enemyTeam].sort().join(",");
+      const existingSquad = groupedLogs.find(([key]) => key === squadKey);
 
-    if (existingSquad) {
-      // Squad already exists, scroll to it
-      setShowForm(false);
-      setAddState({});
+      if (existingSquad) {
+        // Squad already exists, scroll to it
+        setShowForm(false);
+        setAddState({});
 
-      // Wait for form to close, then scroll
-      setTimeout(() => {
-        const element = document.getElementById(`squad-${squadKey}`);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-          // Add a highlight effect
-          element.classList.add("ring-4", "ring-blue-500");
-          setTimeout(() => {
-            element.classList.remove("ring-4", "ring-blue-500");
-          }, 2000);
-        }
-      }, 100);
+        // Wait for form to close, then scroll
+        setTimeout(() => {
+          const element = document.getElementById(`squad-${squadKey}`);
+          if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+            // Add a highlight effect
+            element.classList.add("ring-4", "ring-blue-500");
+            setTimeout(() => {
+              element.classList.remove("ring-4", "ring-blue-500");
+            }, 2000);
+          }
+        }, 100);
 
-      alert(
-        "This enemy squad already exists! Scrolling to the existing report..."
-      );
-      return;
+        alert(
+          "This enemy squad already exists! Scrolling to the existing report..."
+        );
+        return;
+      }
     }
 
     const { data: userData } = await client.auth.getUser();
@@ -220,27 +232,53 @@ const App: React.FC = () => {
         ? (anyUser.user_metadata.ingame_name as string)
         : null;
 
-    const { data: inserted, error } = await client
-      .from("strategy_logs")
-      .insert({
-        enemy_team: data.enemyTeam,
-        counter_team: data.counterTeam,
-        type: data.type,
-        notes: data.notes,
-        author_id: user.id,
-        author_email: user.email,
-        author_name: authorName,
-      })
-      .select("*")
-      .single();
+    if (addState.editLogId) {
+      const { data: updated, error } = await client
+        .from("strategy_logs")
+        .update({
+          counter_team: data.counterTeam,
+          type: data.type,
+          notes: data.notes,
+          // Keep author_name in sync if the user set/changed it
+          author_name: authorName,
+        })
+        .eq("id", addState.editLogId)
+        .eq("author_id", user.id)
+        .select("*")
+        .single();
 
-    if (error) {
-      alert(error.message);
-      return;
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      const updatedLog = toStrategyLog(updated as DbStrategyLogRow);
+      setLogs((prev) =>
+        prev.map((l) => (l.id === updatedLog.id ? updatedLog : l))
+      );
+    } else {
+      const { data: inserted, error } = await client
+        .from("strategy_logs")
+        .insert({
+          enemy_team: data.enemyTeam,
+          counter_team: data.counterTeam,
+          type: data.type,
+          notes: data.notes,
+          author_id: user.id,
+          author_email: user.email,
+          author_name: authorName,
+        })
+        .select("*")
+        .single();
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      const newLog = toStrategyLog(inserted as DbStrategyLogRow);
+      setLogs((prev) => [newLog, ...prev]);
     }
-
-    const newLog = toStrategyLog(inserted as DbStrategyLogRow);
-    setLogs((prev) => [newLog, ...prev]);
     setShowForm(false);
     setAddState({});
   };
@@ -394,6 +432,50 @@ const App: React.FC = () => {
       ...prev,
       [squadKey]: totalVotes,
     }));
+  };
+
+  const handleDeleteLog = async (id: string) => {
+    if (!ensureSignedIn("post")) return;
+
+    const client = getSupabaseBrowserClient();
+    if (!client) return;
+
+    const { data: userData } = await client.auth.getUser();
+    const user = userData.user;
+    if (!user) {
+      setAuthModalReason("post");
+      setAuthModalOpen(true);
+      return;
+    }
+
+    const ok = window.confirm("Delete this post? This cannot be undone.");
+    if (!ok) return;
+
+    const { error } = await client
+      .from("strategy_logs")
+      .delete()
+      .eq("id", id)
+      .eq("author_id", user.id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setLogs((prev) => prev.filter((l) => l.id !== id));
+  };
+
+  const openEditLog = (log: StrategyLog) => {
+    if (!ensureSignedIn("post")) return;
+    setAddState({
+      enemyIds: log.enemyTeam,
+      type: log.type,
+      editLogId: log.id,
+      counterIds: log.counterTeam,
+      notes: log.notes,
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const openAddLog = (enemyIds?: string[], type?: LogType) => {
@@ -875,6 +957,8 @@ const App: React.FC = () => {
               }}
               initialEnemyTeam={addState.enemyIds}
               initialType={addState.type}
+              initialCounterTeam={addState.counterIds}
+              initialNotes={addState.notes}
             />
           )}
 
@@ -1090,9 +1174,12 @@ const App: React.FC = () => {
                         squadVotes={squadVotes[key] || 0}
                         squadCreator={firstLog.author}
                         compactView={compactView}
+                        currentUserId={authUserId}
                         onVote={handleVote}
                         onSquadVote={(type) => handleSquadVote(key, type)}
                         onAddLog={openAddLog}
+                        onDeleteLog={handleDeleteLog}
+                        onEditLog={openEditLog}
                       />
                     </div>
                   );
@@ -1126,7 +1213,7 @@ const App: React.FC = () => {
             <div className="space-y-8">
               {/* Overview Stats Cards */}
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="bg-gradient-to-br from-blue-500/12 to-blue-600/5 border border-blue-500/20 rounded-2xl p-6 text-center glass">
+                <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-6 text-center shadow-xl">
                   <div className="text-4xl font-black text-blue-400">
                     {stats.totalReports}
                   </div>
@@ -1134,7 +1221,7 @@ const App: React.FC = () => {
                     Total Reports
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-emerald-500/12 to-emerald-600/5 border border-emerald-500/20 rounded-2xl p-6 text-center glass">
+                <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-6 text-center shadow-xl">
                   <div className="text-4xl font-black text-emerald-400">
                     {stats.totalSuccess}
                   </div>
@@ -1142,7 +1229,7 @@ const App: React.FC = () => {
                     Successful
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-rose-500/12 to-rose-600/5 border border-rose-500/20 rounded-2xl p-6 text-center glass">
+                <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-6 text-center shadow-xl">
                   <div className="text-4xl font-black text-rose-400">
                     {stats.totalFail}
                   </div>
@@ -1150,7 +1237,7 @@ const App: React.FC = () => {
                     Failed
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-purple-500/12 to-purple-600/5 border border-purple-500/20 rounded-2xl p-6 text-center glass">
+                <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-6 text-center shadow-xl">
                   <div className="text-4xl font-black text-purple-400">
                     {stats.uniqueSquads}
                   </div>
@@ -1158,7 +1245,7 @@ const App: React.FC = () => {
                     Unique Squads
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-amber-500/12 to-amber-600/5 border border-amber-500/20 rounded-2xl p-6 text-center glass">
+                <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-6 text-center shadow-xl">
                   <div className="text-4xl font-black text-amber-400">
                     {stats.avgVotes.toFixed(1)}
                   </div>

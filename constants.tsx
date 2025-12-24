@@ -38,6 +38,15 @@ export const HERO_DATABASE: Hero[] = [
     tier: "SSS",
   },
   {
+    id: "wukong",
+    name: "Wukong",
+    ability:
+      "Clone, Skill Effects Change (Clone Presence), Petrify, Crit Rate Boost (100% at 6th Transcendence), Ignore Defense, Cooldown Reduction (On Damage Taken), Heal All Allies (On Skill Activation / HP Below Half), Damage Resistance, Guts, Attack Power-Based Defense Boost, Crowd Control Immunity",
+    attackType: "Magic",
+    range: "All Enemies",
+    tier: "SSS",
+  },
+  {
     id: "ryan",
     name: "Ryan",
     ability:

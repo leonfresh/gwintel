@@ -18,6 +18,7 @@ export interface StrategyLog {
   type: LogType;
   notes: string;
   votes: number;
+  authorId: string;
   author: string; // email (derived from Supabase login)
   createdAt: number;
 }
