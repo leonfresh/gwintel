@@ -41,6 +41,7 @@ type DbCounterQuizScoreRow = {
 
 const AUTO_ADVANCE_MS = 3000;
 const MAX_OPTIONS = 4;
+const MAX_QUESTIONS = 20;
 
 function clampNonNegative(n: number) {
   return Math.max(0, n);
@@ -85,7 +86,15 @@ function formatWhen(ts: number) {
   }
 }
 
-function TeamRow({ ids }: { ids: string[] }) {
+function TeamRow({
+  ids,
+  size = "sm",
+  showTier = true,
+}: {
+  ids: string[];
+  size?: "sm" | "md" | "lg";
+  showTier?: boolean;
+}) {
   const heroesById = useMemo(() => {
     const map = new Map<string, Hero>();
     for (const h of HERO_DATABASE) map.set(h.id, h);
@@ -100,7 +109,7 @@ function TeamRow({ ids }: { ids: string[] }) {
         return (
           <HeroHoverCard key={id} hero={hero}>
             <span className="inline-flex">
-              <HeroAvatar hero={hero} size="sm" showTier />
+              <HeroAvatar hero={hero} size={size} showTier={showTier} />
             </span>
           </HeroHoverCard>
         );
@@ -125,6 +134,8 @@ export default function CounterQuizClient() {
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [runBestStreak, setRunBestStreak] = useState(0);
+  const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const [runComplete, setRunComplete] = useState(false);
 
   const [scoreJuice, setScoreJuice] = useState(false);
   const [streakJuice, setStreakJuice] = useState(false);
@@ -140,6 +151,8 @@ export default function CounterQuizClient() {
   });
 
   const autoAdvanceRef = useRef<number | null>(null);
+  const askedEnemyKeysRef = useRef<Set<string>>(new Set());
+  const runSubmittedRef = useRef(false);
 
   const heroesById = useMemo(() => {
     const map = new Map<string, Hero>();
@@ -279,6 +292,7 @@ export default function CounterQuizClient() {
         .from("strategy_logs")
         .select("id, enemy_team, counter_team, type, votes, created_at")
         .eq("type", "success")
+        .gt("votes", 0)
         .order("created_at", { ascending: false })
         .limit(2000);
 
@@ -306,6 +320,9 @@ export default function CounterQuizClient() {
       const counterPool: string[][] = [];
 
       for (const r of rows) {
+        const votes = typeof r.votes === "number" ? r.votes : 0;
+        if (votes <= 0) continue;
+
         const enemy = normalizeTeam(
           Array.isArray(r.enemy_team) ? r.enemy_team : []
         );
@@ -314,7 +331,7 @@ export default function CounterQuizClient() {
         );
         if (enemy.length === 0 || counter.length === 0) continue;
 
-        const w = Math.max(0, typeof r.votes === "number" ? r.votes : 0) + 1;
+        const w = votes;
         const eKey = teamKey(enemy);
         const cKey = teamKey(counter);
 
@@ -388,6 +405,8 @@ export default function CounterQuizClient() {
   };
 
   const nextQuestion = () => {
+    if (runComplete) return;
+
     if (autoAdvanceRef.current !== null) {
       window.clearTimeout(autoAdvanceRef.current);
       autoAdvanceRef.current = null;
@@ -403,13 +422,22 @@ export default function CounterQuizClient() {
       return;
     }
 
+    const asked = askedEnemyKeysRef.current;
+    let candidates = seeds.filter((s) => !asked.has(teamKey(s.enemyTeam)));
+    if (candidates.length === 0) {
+      asked.clear();
+      candidates = seeds;
+    }
+
     const picked = pickWeighted(
-      seeds.map((s) => ({ item: s, weight: s.weight }))
+      candidates.map((s) => ({ item: s, weight: Math.max(1, s.weight) }))
     );
     if (!picked) {
       setQuestion(null);
       return;
     }
+
+    asked.add(teamKey(picked.enemyTeam));
 
     setQuestion(buildQuestion(picked));
   };
@@ -428,6 +456,7 @@ export default function CounterQuizClient() {
 
   useEffect(() => {
     if (!answered) return;
+    if (runComplete) return;
     autoAdvanceRef.current = window.setTimeout(() => {
       nextQuestion();
     }, AUTO_ADVANCE_MS);
@@ -458,44 +487,18 @@ export default function CounterQuizClient() {
     return () => window.clearTimeout(t);
   }, [cardJuice]);
 
-  const answer = (optionTeam: string[]) => {
-    if (!question || answered) return;
-
-    const key = teamKey(optionTeam);
-    const correct = key === question.correctKey;
-    setSelectedKey(key);
-    setAnswered(true);
-    setWasCorrect(correct);
-
-    if (correct) {
-      setScore((s) => s + 1);
-      setStreak((s) => s + 1);
-      setScoreJuice(true);
-      setStreakJuice(true);
-      setCardJuice("right");
-      setRunBestStreak((best) => Math.max(best, streak + 1));
-    } else {
-      setScore((s) => clampNonNegative(s - 1));
-      setStreak(0);
-      setScoreJuice(true);
-      setCardJuice("wrong");
-    }
-  };
-
-  const recordRun = async () => {
+  const submitRun = async (finalScore: number, bestStreakNow: number) => {
     if (!supabase) return;
     if (!authUserId) {
       setLeaderboardError("Sign in to submit scores to the leaderboard.");
       return;
     }
-
-    const bestStreakNow = Math.max(runBestStreak, streak);
     const displayName = authDisplayName;
 
     const { error } = await supabase.from("counter_quiz_scores").insert({
       user_id: authUserId,
       display_name: displayName,
-      score,
+      score: finalScore,
       best_streak: bestStreakNow,
     });
 
@@ -508,13 +511,56 @@ export default function CounterQuizClient() {
     await loadLeaderboard(authUserId);
   };
 
+  const answer = async (optionTeam: string[]) => {
+    if (!question || answered || runComplete) return;
+
+    const key = teamKey(optionTeam);
+    const correct = key === question.correctKey;
+    setSelectedKey(key);
+    setAnswered(true);
+    setWasCorrect(correct);
+
+    const nextScore = correct ? score + 1 : clampNonNegative(score - 1);
+    const nextStreak = correct ? streak + 1 : 0;
+    const nextBestStreak = correct
+      ? Math.max(runBestStreak, nextStreak)
+      : runBestStreak;
+
+    setScore(nextScore);
+    setStreak(nextStreak);
+    setRunBestStreak(nextBestStreak);
+
+    if (correct) {
+      setScoreJuice(true);
+      setStreakJuice(true);
+      setCardJuice("right");
+    } else {
+      setScoreJuice(true);
+      setCardJuice("wrong");
+    }
+
+    const nextAnswered = questionsAnswered + 1;
+    setQuestionsAnswered(nextAnswered);
+    if (nextAnswered >= MAX_QUESTIONS) {
+      setRunComplete(true);
+      if (!runSubmittedRef.current) {
+        runSubmittedRef.current = true;
+        await submitRun(nextScore, nextBestStreak);
+      }
+    }
+  };
+
   const reset = async () => {
-    if (score > 0 || streak > 0 || runBestStreak > 0) {
-      await recordRun();
+    if (!runComplete && (score > 0 || streak > 0 || runBestStreak > 0)) {
+      await submitRun(score, Math.max(runBestStreak, streak));
     }
     setScore(0);
     setStreak(0);
     setRunBestStreak(0);
+    setQuestionsAnswered(0);
+    setRunComplete(false);
+    askedEnemyKeysRef.current.clear();
+    runSubmittedRef.current = false;
     nextQuestion();
   };
 
@@ -559,285 +605,349 @@ export default function CounterQuizClient() {
   return (
     <HeroHoverProvider>
       <div className="min-h-screen px-4 py-10 flex items-center justify-center">
-        <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
-          <div className="bg-slate-950/20 glass p-5 rounded-[1.75rem] border border-white/10">
-            <div className="flex items-center justify-between gap-3">
-              <Link
-                href="/"
+        <div className="w-full max-w-5xl">
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              href="/"
+              className="px-4 py-2 rounded-xl bg-slate-950/30 glass border border-white/10 text-slate-200 hover:text-white hover:bg-slate-950/40 transition"
+            >
+              Back
+            </Link>
+            {runComplete ? (
+              <button
+                onClick={reset}
                 className="px-4 py-2 rounded-xl bg-slate-950/30 glass border border-white/10 text-slate-200 hover:text-white hover:bg-slate-950/40 transition"
               >
-                Back
-              </Link>
+                Start New Run
+              </button>
+            ) : (
               <button
                 onClick={reset}
                 className="px-4 py-2 rounded-xl bg-slate-950/30 glass border border-white/10 text-slate-200 hover:text-white hover:bg-slate-950/40 transition"
               >
                 Reset Run
               </button>
-            </div>
-
-            <div className="mt-5 flex items-start justify-between gap-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
-                  GW Counter Quiz
-                </div>
-                <div className="text-sm text-slate-300 mt-1">
-                  Pick the best counter team. Auto-advances in{" "}
-                  {AUTO_ADVANCE_MS / 1000}s.
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                  Best (you)
-                </div>
-                <div className="text-xs text-slate-300 font-bold mt-1">
-                  {personalBest.bestScore} score {personalBest.bestStreak}{" "}
-                  streak
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
-                <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                  Score
-                </div>
-                <div
-                  className={`text-4xl font-black text-white mt-1 transition-transform duration-150 origin-left ${
-                    scoreJuice ? "scale-110" : "scale-100"
-                  }`}
-                >
-                  {score}
-                </div>
-                <div className="text-[11px] text-slate-400 mt-1 font-bold">
-                  Never below 0
-                </div>
-              </div>
-
-              <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
-                <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                  Streak
-                </div>
-                <div
-                  className={`text-4xl font-black text-white mt-1 transition-transform duration-150 origin-left ${
-                    streakJuice ? "scale-110" : "scale-100"
-                  }`}
-                >
-                  {streak}
-                </div>
-                <div className="text-[11px] text-slate-400 mt-1 font-bold">
-                  Best this run: {Math.max(runBestStreak, streak)}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <div
-                className="mx-auto w-full max-w-2xl"
-                style={{ perspective: "1200px" }}
-              >
-                <div
-                  className="relative w-full"
-                  style={{
-                    transform: cardTransform,
-                    transition: "transform 180ms ease",
-                  }}
-                >
-                  <div
-                    className="relative w-full"
-                    style={{
-                      transformStyle: "preserve-3d",
-                      transition:
-                        "transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1)",
-                      transform: answered ? "rotateY(180deg)" : "rotateY(0deg)",
-                    }}
-                  >
-                    <div
-                      className="rounded-[1.75rem] border border-white/10 bg-slate-950/20 glass p-5"
-                      style={{
-                        backfaceVisibility: "hidden",
-                        WebkitBackfaceVisibility: "hidden",
-                      }}
-                    >
-                      {loading ? (
-                        <div className="text-slate-300 font-bold">
-                          Loading quiz...
-                        </div>
-                      ) : loadError ? (
-                        <div className="text-slate-300 font-bold">
-                          {loadError}
-                        </div>
-                      ) : !question ? (
-                        <div className="text-slate-300 font-bold">
-                          Not enough data yet.
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
-                                Enemy Team
-                              </div>
-                              <div className="mt-2">
-                                <TeamRow ids={question.enemyTeam} />
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                Choose Counter
-                              </div>
-                              <div className="text-xs text-slate-400 font-bold mt-1">
-                                Tap an option
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {question.options.map((opt) => {
-                              const key = teamKey(opt);
-                              return (
-                                <button
-                                  key={key}
-                                  onClick={() => answer(opt)}
-                                  className="text-left rounded-2xl border border-white/10 bg-slate-950/20 glass p-4 hover:bg-slate-950/30 transition"
-                                >
-                                  <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                    Counter Team
-                                  </div>
-                                  <div className="mt-2">
-                                    <TeamRow ids={opt} />
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div
-                      className="absolute inset-0 rounded-[1.75rem] border border-white/10 bg-slate-950/20 glass p-5"
-                      style={{
-                        transform: "rotateY(180deg)",
-                        backfaceVisibility: "hidden",
-                        WebkitBackfaceVisibility: "hidden",
-                      }}
-                    >
-                      {!question ? null : (
-                        <>
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
-                                Result
-                              </div>
-                              <div
-                                className={`text-2xl font-black mt-1 ${
-                                  wasCorrect
-                                    ? "text-emerald-300"
-                                    : "text-rose-300"
-                                }`}
-                              >
-                                {wasCorrect ? "Correct" : "Wrong"}
-                              </div>
-                              <div className="text-xs text-slate-300 font-bold mt-2">
-                                Next in {AUTO_ADVANCE_MS / 1000}s
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                Enemy
-                              </div>
-                              <div className="mt-2 flex justify-end">
-                                <TeamRow ids={question.enemyTeam} />
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="rounded-2xl border border-white/10 bg-slate-950/20 glass p-4">
-                              <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                Your Pick
-                              </div>
-                              <div className="mt-2">
-                                {selectedTeam ? (
-                                  <TeamRow ids={selectedTeam} />
-                                ) : (
-                                  <div className="text-sm text-slate-400 font-bold"></div>
-                                )}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-slate-950/20 glass p-4">
-                              <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
-                                Best Counter
-                              </div>
-                              <div className="mt-2">
-                                {correctTeam ? (
-                                  <TeamRow ids={correctTeam} />
-                                ) : (
-                                  <div className="text-sm text-slate-400 font-bold"></div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
-          <div className="bg-slate-950/20 glass p-5 rounded-[1.75rem] border border-white/10 h-fit">
-            <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
-              Leaderboard
-            </div>
-            <div className="text-xs text-slate-400 font-bold mt-1">
-              Global top runs.
-            </div>
+          <div className="mt-6">
+            {runComplete ? (
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
+                <div className="bg-slate-950/20 glass p-6 rounded-[1.75rem] border border-white/10">
+                  <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                    Report Card
+                  </div>
+                  <div className="text-3xl font-black text-white mt-2">
+                    Final score: {score}
+                  </div>
+                  <div className="text-sm text-slate-300 font-bold mt-2">
+                    Best streak: {Math.max(runBestStreak, streak)} · Questions:{" "}
+                    {MAX_QUESTIONS}
+                  </div>
 
-            {!authUserId ? (
-              <div className="mt-3 text-xs text-slate-300 font-bold">
-                Sign in to submit your score.
-              </div>
-            ) : null}
-
-            {leaderboardError ? (
-              <div className="mt-3 text-xs text-rose-300 font-bold">
-                {leaderboardError}
-              </div>
-            ) : null}
-
-            <div className="mt-4 space-y-2">
-              {leaderboard.length === 0 ? (
-                <div className="text-sm text-slate-300 font-bold">
-                  No scores yet.
-                </div>
-              ) : (
-                leaderboard.slice(0, 10).map((x, idx) => (
-                  <div
-                    key={x.id}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/20 glass px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-xs font-black text-slate-200 truncate">
-                        #{idx + 1} {x.score} score
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
+                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                        Best (you)
                       </div>
-                      <div className="text-[11px] text-slate-400 font-bold">
-                        {x.best_streak} streak{" "}
-                        {formatWhen(new Date(x.created_at).getTime())}
+                      <div className="text-xl font-black text-slate-200 mt-1">
+                        {personalBest.bestScore}
+                        <span className="text-sm font-black text-slate-400">
+                          {" "}
+                          score
+                        </span>
                       </div>
-                      <div className="text-[11px] text-slate-500 font-bold truncate">
-                        {x.display_name || "Unknown"}
+                      <div className="text-[11px] text-slate-400 mt-1 font-bold">
+                        {personalBest.bestStreak} streak
                       </div>
                     </div>
-                    <div className="text-xs font-black text-slate-300">
-                      {idx === 0 ? "Best" : ""}
+                    <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
+                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                        Submission
+                      </div>
+                      {!authUserId ? (
+                        <div className="text-[11px] text-slate-300 font-bold mt-1">
+                          Sign in to submit scores.
+                        </div>
+                      ) : leaderboardError ? (
+                        <div className="text-[11px] text-rose-300 font-bold mt-1">
+                          {leaderboardError}
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-slate-300 font-bold mt-1">
+                          Submitted to global leaderboard.
+                        </div>
+                      )}
+                      <div className="text-[11px] text-slate-500 font-bold mt-1">
+                        Auto-submitted on completion.
+                      </div>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+
+                <div className="bg-slate-950/20 glass p-5 rounded-[1.75rem] border border-white/10 h-fit">
+                  <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                    Leaderboard
+                  </div>
+                  <div className="text-xs text-slate-400 font-bold mt-1">
+                    Global top runs.
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {leaderboard.length === 0 ? (
+                      <div className="text-sm text-slate-300 font-bold">
+                        No scores yet.
+                      </div>
+                    ) : (
+                      leaderboard.slice(0, 10).map((x, idx) => (
+                        <div
+                          key={x.id}
+                          className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/20 glass px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-xs font-black text-slate-200 truncate">
+                              #{idx + 1} {x.score} score
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-bold">
+                              {x.best_streak} streak{" "}
+                              {formatWhen(new Date(x.created_at).getTime())}
+                            </div>
+                            <div className="text-[11px] text-slate-500 font-bold truncate">
+                              {x.display_name || "Unknown"}
+                            </div>
+                          </div>
+                          <div className="text-xs font-black text-slate-300">
+                            {idx === 0 ? "Best" : ""}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mx-auto w-full max-w-3xl">
+                <div className="bg-slate-950/20 glass p-5 rounded-[1.75rem] border border-white/10">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                        GW Counter Quiz
+                      </div>
+                      <div className="text-sm text-slate-300 mt-1">
+                        Pick the best counter team. Auto-advances in{" "}
+                        {AUTO_ADVANCE_MS / 1000}s.
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                        Progress
+                      </div>
+                      <div className="text-xs text-slate-300 font-bold mt-1">
+                        {questionsAnswered}/{MAX_QUESTIONS}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
+                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                        Score
+                      </div>
+                      <div
+                        className={`text-4xl font-black text-white mt-1 transition-transform duration-150 origin-left ${
+                          scoreJuice ? "scale-110" : "scale-100"
+                        }`}
+                      >
+                        {score}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-1 font-bold">
+                        &nbsp;
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950/20 glass rounded-2xl border border-white/10 p-4">
+                      <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                        Streak
+                      </div>
+                      <div
+                        className={`text-4xl font-black text-white mt-1 transition-transform duration-150 origin-left ${
+                          streakJuice ? "scale-110" : "scale-100"
+                        }`}
+                      >
+                        {streak}
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-1 font-bold">
+                        Best this run: {Math.max(runBestStreak, streak)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <div
+                      className="mx-auto w-full"
+                      style={{ perspective: "1200px" }}
+                    >
+                      <div
+                        className="relative w-full"
+                        style={{
+                          transform: cardTransform,
+                          transition: "transform 180ms ease",
+                        }}
+                      >
+                        <div
+                          className="relative w-full"
+                          style={{
+                            transformStyle: "preserve-3d",
+                            transition:
+                              "transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1)",
+                            transform: answered
+                              ? "rotateY(180deg)"
+                              : "rotateY(0deg)",
+                          }}
+                        >
+                          <div
+                            className="rounded-[1.75rem] border border-white/10 bg-slate-950/20 glass p-5"
+                            style={{
+                              backfaceVisibility: "hidden",
+                              WebkitBackfaceVisibility: "hidden",
+                            }}
+                          >
+                            {loading ? (
+                              <div className="text-slate-300 font-bold">
+                                Loading quiz...
+                              </div>
+                            ) : loadError ? (
+                              <div className="text-slate-300 font-bold">
+                                {loadError}
+                              </div>
+                            ) : !question ? (
+                              <div className="text-slate-300 font-bold">
+                                Not enough data yet.
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                                      Enemy Team
+                                    </div>
+                                    <div className="mt-2">
+                                      <TeamRow
+                                        ids={question.enemyTeam}
+                                        size="md"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                      Choose Counter
+                                    </div>
+                                    <div className="text-xs text-slate-400 font-bold mt-1">
+                                      Tap an option
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {question.options.map((opt) => {
+                                    const key = teamKey(opt);
+                                    return (
+                                      <button
+                                        key={key}
+                                        onClick={() => void answer(opt)}
+                                        className="group text-left rounded-2xl border border-white/10 bg-slate-950/20 glass p-4 transition will-change-transform hover:bg-slate-950/30 hover:border-white/20 hover:-translate-y-0.5 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-white/20"
+                                      >
+                                        <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                          Counter Team
+                                        </div>
+                                        <div className="mt-2">
+                                          <TeamRow ids={opt} size="sm" />
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          <div
+                            className="absolute inset-0 rounded-[1.75rem] border border-white/10 bg-slate-950/20 glass p-5"
+                            style={{
+                              transform: "rotateY(180deg)",
+                              backfaceVisibility: "hidden",
+                              WebkitBackfaceVisibility: "hidden",
+                            }}
+                          >
+                            {!question ? null : (
+                              <>
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-400 font-black">
+                                      Result
+                                    </div>
+                                    <div
+                                      className={`text-2xl font-black mt-1 ${
+                                        wasCorrect
+                                          ? "text-emerald-300"
+                                          : "text-rose-300"
+                                      }`}
+                                    >
+                                      {wasCorrect ? "Correct" : "Wrong"}
+                                    </div>
+                                    <div className="text-xs text-slate-300 font-bold mt-2">
+                                      Next in {AUTO_ADVANCE_MS / 1000}s
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                      Enemy
+                                    </div>
+                                    <div className="mt-2 flex justify-end">
+                                      <TeamRow
+                                        ids={question.enemyTeam}
+                                        size="md"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="rounded-2xl border border-white/10 bg-slate-950/20 glass p-4">
+                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                      Your Pick
+                                    </div>
+                                    <div className="mt-2">
+                                      {selectedTeam ? (
+                                        <TeamRow ids={selectedTeam} />
+                                      ) : (
+                                        <div className="text-sm text-slate-400 font-bold"></div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="rounded-2xl border border-white/10 bg-slate-950/20 glass p-4">
+                                    <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500 font-black">
+                                      Best Counter
+                                    </div>
+                                    <div className="mt-2">
+                                      {correctTeam ? (
+                                        <TeamRow ids={correctTeam} />
+                                      ) : (
+                                        <div className="text-sm text-slate-400 font-bold"></div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
