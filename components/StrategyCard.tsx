@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { StrategyLog, Hero, LogType } from "../types";
 import { HERO_DATABASE } from "../constants";
 
@@ -6,6 +6,8 @@ interface Props {
   enemyIds: string[];
   logs: StrategyLog[];
   squadVotes: number;
+  squadCreator: string;
+  compactView: boolean;
   onVote: (id: string, type: "up" | "down") => void;
   onSquadVote: (type: "up" | "down") => void;
   onAddLog: (enemyIds: string[], type: LogType) => void;
@@ -15,10 +17,15 @@ const StrategyCard: React.FC<Props> = ({
   enemyIds,
   logs,
   squadVotes,
+  squadCreator,
+  compactView,
   onVote,
   onSquadVote,
   onAddLog,
 }) => {
+  const [mobileExpandSuccess, setMobileExpandSuccess] = useState(false);
+  const [mobileExpandFail, setMobileExpandFail] = useState(false);
+
   const getHero = (id: string) => HERO_DATABASE.find((h) => h.id === id);
   const successLogs = logs
     .filter((l) => l.type === "success")
@@ -156,12 +163,22 @@ const StrategyCard: React.FC<Props> = ({
       </div>
 
       <div className="hidden md:block">
-        <div className="text-right">
-          <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
-            Database ID
+        <div className="text-right space-y-3">
+          <div>
+            <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
+              Squad Reported By
+            </div>
+            <div className="text-blue-400 font-bold text-xs mt-1">
+              {squadCreator}
+            </div>
           </div>
-          <div className="text-slate-400 font-mono text-xs">
-            {enemyIds.join("-").substring(0, 12)}
+          <div>
+            <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
+              Database ID
+            </div>
+            <div className="text-slate-400 font-mono text-xs">
+              {enemyIds.join("-").substring(0, 12)}
+            </div>
           </div>
         </div>
       </div>
@@ -233,7 +250,11 @@ const StrategyCard: React.FC<Props> = ({
       <EnemySquadHeader />
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
         {/* Effective Column */}
-        <div className="p-8 border-r border-slate-700/50 bg-slate-800/20">
+        <div
+          className={`p-8 border-r border-slate-700/50 bg-slate-800/20 transition-all ${
+            compactView ? "group relative" : ""
+          }`}
+        >
           <div className="flex items-center justify-between mb-8">
             <h3 className="flex items-center gap-3 text-emerald-400 font-black text-sm uppercase tracking-[0.25em]">
               <div className="p-1.5 bg-emerald-500/20 rounded-lg">
@@ -252,6 +273,27 @@ const StrategyCard: React.FC<Props> = ({
                 </svg>
               </div>
               Successful Counters
+              {compactView && (
+                <button
+                  onClick={() => setMobileExpandSuccess(!mobileExpandSuccess)}
+                  className="xl:hidden p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg border border-emerald-500/20 transition-all"
+                  title="Show/hide details"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </button>
+              )}
             </h3>
             <button
               onClick={() => onAddLog(enemyIds, "success")}
@@ -273,7 +315,14 @@ const StrategyCard: React.FC<Props> = ({
               </svg>
             </button>
           </div>
-          <div className="space-y-6">
+          <div
+            className={`space-y-6 transition-all ${
+              compactView
+                ? "hidden xl:group-hover:block xl:block " +
+                  (mobileExpandSuccess ? "!block" : "")
+                : ""
+            }`}
+          >
             {successLogs.length > 0 ? (
               successLogs.map((log) => <LogEntry key={log.id} log={log} />)
             ) : (
@@ -287,7 +336,11 @@ const StrategyCard: React.FC<Props> = ({
         </div>
 
         {/* Fail Column */}
-        <div className="p-8 bg-slate-900/30">
+        <div
+          className={`p-8 bg-slate-900/30 transition-all ${
+            compactView ? "group relative" : ""
+          }`}
+        >
           <div className="flex items-center justify-between mb-8">
             <h3 className="flex items-center gap-3 text-rose-500 font-black text-sm uppercase tracking-[0.25em]">
               <div className="p-1.5 bg-rose-500/20 rounded-lg">
@@ -306,6 +359,27 @@ const StrategyCard: React.FC<Props> = ({
                 </svg>
               </div>
               Verified Fails
+              {compactView && (
+                <button
+                  onClick={() => setMobileExpandFail(!mobileExpandFail)}
+                  className="xl:hidden p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-lg border border-rose-500/20 transition-all"
+                  title="Show/hide details"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </button>
+              )}
             </h3>
             <button
               onClick={() => onAddLog(enemyIds, "fail")}
@@ -327,7 +401,14 @@ const StrategyCard: React.FC<Props> = ({
               </svg>
             </button>
           </div>
-          <div className="space-y-6">
+          <div
+            className={`space-y-6 transition-all ${
+              compactView
+                ? "hidden xl:group-hover:block xl:block " +
+                  (mobileExpandFail ? "!block" : "")
+                : ""
+            }`}
+          >
             {failLogs.length > 0 ? (
               failLogs.map((log) => <LogEntry key={log.id} log={log} />)
             ) : (

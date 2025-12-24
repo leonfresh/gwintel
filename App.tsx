@@ -59,6 +59,7 @@ const App: React.FC = () => {
   );
   const [minVotes, setMinVotes] = useState<number>(0);
   const [squadVotes, setSquadVotes] = useState<Record<string, number>>({});
+  const [compactView, setCompactView] = useState<boolean>(false);
 
   useEffect(() => {
     const client = getSupabaseBrowserClient();
@@ -144,6 +145,34 @@ const App: React.FC = () => {
 
     const client = getSupabaseBrowserClient();
     if (!client) return;
+
+    // Check if squad already exists
+    const squadKey = [...data.enemyTeam].sort().join(",");
+    const existingSquad = groupedLogs.find(([key]) => key === squadKey);
+
+    if (existingSquad) {
+      // Squad already exists, scroll to it
+      setShowForm(false);
+      setAddState({});
+
+      // Wait for form to close, then scroll
+      setTimeout(() => {
+        const element = document.getElementById(`squad-${squadKey}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Add a highlight effect
+          element.classList.add("ring-4", "ring-blue-500");
+          setTimeout(() => {
+            element.classList.remove("ring-4", "ring-blue-500");
+          }, 2000);
+        }
+      }, 100);
+
+      alert(
+        "This enemy squad already exists! Scrolling to the existing report..."
+      );
+      return;
+    }
 
     const { data: userData } = await client.auth.getUser();
     const user = userData.user;
@@ -839,6 +868,35 @@ const App: React.FC = () => {
                   min="0"
                 />
               </div>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Compact View:
+                </label>
+                <button
+                  onClick={() => setCompactView(!compactView)}
+                  className={`p-2 rounded-lg border transition-all ${
+                    compactView
+                      ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
+                      : "bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300"
+                  }`}
+                  title="Toggle compact view"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -846,17 +904,30 @@ const App: React.FC = () => {
         {activeTab === "reports" ? (
           <div className="space-y-12">
             {groupedLogs.length > 0 ? (
-              groupedLogs.map(([key, logs]) => (
-                <StrategyCard
-                  key={key}
-                  enemyIds={key.split(",")}
-                  logs={logs}
-                  squadVotes={squadVotes[key] || 0}
-                  onVote={handleVote}
-                  onSquadVote={(type) => handleSquadVote(key, type)}
-                  onAddLog={openAddLog}
-                />
-              ))
+              groupedLogs.map(([key, logs]) => {
+                // Find the first (oldest) log for this squad to get the creator
+                const firstLog = logs.reduce((oldest, log) =>
+                  log.createdAt < oldest.createdAt ? log : oldest
+                );
+                return (
+                  <div
+                    key={key}
+                    id={`squad-${key}`}
+                    className="transition-all duration-300"
+                  >
+                    <StrategyCard
+                      enemyIds={key.split(",")}
+                      logs={logs}
+                      squadVotes={squadVotes[key] || 0}
+                      squadCreator={firstLog.author}
+                      compactView={compactView}
+                      onVote={handleVote}
+                      onSquadVote={(type) => handleSquadVote(key, type)}
+                      onAddLog={openAddLog}
+                    />
+                  </div>
+                );
+              })
             ) : (
               <div className="col-span-full py-32 flex flex-col items-center justify-center text-slate-700 bg-slate-800/20 rounded-[3rem] border-4 border-dashed border-slate-800">
                 <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-6">
