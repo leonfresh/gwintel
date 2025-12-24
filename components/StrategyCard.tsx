@@ -54,7 +54,7 @@ const StrategyCard: React.FC<Props> = ({
     setDraggedIndex(index);
     setDraggedLogId(null); // Ensure we are dragging enemy team
     e.dataTransfer.effectAllowed = "move";
-    
+
     // Set custom drag image to the circle avatar
     const target = e.currentTarget as HTMLElement;
     const img = target.querySelector("img");
@@ -63,14 +63,15 @@ const StrategyCard: React.FC<Props> = ({
     }
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIndex || draggedLogId) return;
+    if (draggedIndex === null || draggedIndex === dropIndex || draggedLogId)
+      return;
 
     const newOrder = [...enemyIds];
     const [removed] = newOrder.splice(draggedIndex, 1);
@@ -82,7 +83,11 @@ const StrategyCard: React.FC<Props> = ({
     setDraggedIndex(null);
   };
 
-  const handleCounterDragStart = (e: React.DragEvent, index: number, logId: string) => {
+  const handleCounterDragStart = (
+    e: React.DragEvent,
+    index: number,
+    logId: string
+  ) => {
     setDraggedIndex(index);
     setDraggedLogId(logId);
     e.dataTransfer.effectAllowed = "move";
@@ -95,9 +100,18 @@ const StrategyCard: React.FC<Props> = ({
     }
   };
 
-  const handleCounterDrop = (e: React.DragEvent, dropIndex: number, log: StrategyLog) => {
+  const handleCounterDrop = (
+    e: React.DragEvent,
+    dropIndex: number,
+    log: StrategyLog
+  ) => {
     e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIndex || draggedLogId !== log.id) return;
+    if (
+      draggedIndex === null ||
+      draggedIndex === dropIndex ||
+      draggedLogId !== log.id
+    )
+      return;
 
     const newOrder = [...log.counterTeam];
     const [removed] = newOrder.splice(draggedIndex, 1);
@@ -141,49 +155,6 @@ const StrategyCard: React.FC<Props> = ({
     if (tier.includes("SS")) return "from-purple-500 to-indigo-700 text-white";
     if (tier.includes("S")) return "from-blue-500 to-blue-700 text-white";
     return "from-slate-600 to-slate-800 text-slate-300";
-  };
-
-  const HeroNameChip: React.FC<{
-    heroId: string;
-    tone: "success" | "fail";
-  }> = ({ heroId, tone }) => {
-    const hero = getHero(heroId);
-    const [imageOk, setImageOk] = useState(true);
-
-    if (!hero) return null;
-
-    const palette =
-      tone === "success"
-        ? "bg-emerald-500/10 text-emerald-200 border-emerald-500/20"
-        : "bg-rose-500/10 text-rose-200 border-rose-500/20";
-    const ring =
-      tone === "success" ? "border-emerald-400/30" : "border-rose-400/30";
-
-    return (
-      <HeroHoverCard hero={hero}>
-        <span
-          className={`relative inline-flex items-center gap-2 text-xs font-black pl-7 pr-3 py-1 rounded-lg shadow-sm border ${palette}`}
-          tabIndex={0}
-        >
-          <span
-            className={`absolute -left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full overflow-hidden border ${ring} bg-slate-950/60 glass flex items-center justify-center text-[10px] font-black text-slate-100 shadow-lg`}
-            aria-hidden="true"
-          >
-            {imageOk ? (
-              <img
-                src={`/heroes/${hero.id}.png`}
-                alt=""
-                className="w-full h-full object-cover"
-                onError={() => setImageOk(false)}
-              />
-            ) : (
-              <span className="leading-none">{hero.name.charAt(0)}</span>
-            )}
-          </span>
-          <span>{hero.name}</span>
-        </span>
-      </HeroHoverCard>
-    );
   };
 
   const EnemySquadHeader: React.FC = () => (
@@ -257,33 +228,31 @@ const StrategyCard: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-wrap justify-center md:justify-start gap-6">
-        {enemyIds.map((id, index) => {
-          const hero = getHero(id);
-          const isTopThree = index < 3;
-          const showImage = isTopThree && !imageErrors[id];
-          return hero ? (
-            <div
-              key={id}
-              draggable={isIcewind}
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDrop={(e) => handleDrop(e, index)}
-              className={isIcewind ? "cursor-move active:cursor-grabbing" : ""}
-            >
-              <HeroHoverCard hero={hero}>
-                <div
-                  className="flex flex-col items-center gap-2 group"
-                  tabIndex={0}
-                >
-                  <div className="relative">
+      <div className="flex-1">
+        {/* Mobile: keep 3 icons on a single row */}
+        <div className="md:hidden flex items-center justify-center gap-2 flex-nowrap">
+          {enemyIds.slice(0, 3).map((id, index) => {
+            const hero = getHero(id);
+            if (!hero) return null;
+            const showImage = !imageErrors[id];
+            return (
+              <div
+                key={id}
+                draggable={isIcewind}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e)}
+                onDrop={(e) => handleDrop(e, index)}
+                className={`${
+                  isIcewind ? "cursor-move active:cursor-grabbing" : ""
+                } shrink-0`}
+              >
+                <HeroHoverCard hero={hero}>
+                  <div className="relative" tabIndex={0}>
                     <div
-                      className={`${
-                        isTopThree ? "w-20 h-20" : "w-14 h-14"
-                      } rounded-full bg-slate-950/25 glass border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
+                      className={`w-14 h-14 rounded-full bg-slate-950/25 glass border-2 overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] ${
                         hero.attackType === "Magic"
-                          ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
-                          : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
+                          ? "border-blue-500/50"
+                          : "border-orange-500/50"
                       }`}
                     >
                       {showImage ? (
@@ -294,12 +263,8 @@ const StrategyCard: React.FC<Props> = ({
                           onError={() => handleImageError(id)}
                         />
                       ) : (
-                        <span
-                          className={`text-white font-black ${
-                            isTopThree ? "text-sm" : "text-xs"
-                          } text-center leading-none px-1`}
-                        >
-                          {hero.name}
+                        <span className="text-white font-black text-[10px] text-center leading-none px-1">
+                          {hero.name.charAt(0)}
                         </span>
                       )}
                     </div>
@@ -311,18 +276,82 @@ const StrategyCard: React.FC<Props> = ({
                       {hero.tier}
                     </div>
                   </div>
+                </HeroHoverCard>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop/tablet: larger icons + labels */}
+        <div className="hidden md:flex flex-wrap justify-center md:justify-start gap-6">
+          {enemyIds.map((id, index) => {
+            const hero = getHero(id);
+            const isTopThree = index < 3;
+            const showImage = isTopThree && !imageErrors[id];
+            return hero ? (
+              <div
+                key={id}
+                draggable={isIcewind}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e)}
+                onDrop={(e) => handleDrop(e, index)}
+                className={
+                  isIcewind ? "cursor-move active:cursor-grabbing" : ""
+                }
+              >
+                <HeroHoverCard hero={hero}>
                   <div
-                    className={`text-[10px] font-bold text-slate-300 text-center leading-tight max-w-[5.5rem] ${
-                      isTopThree ? "" : "opacity-80"
-                    }`}
+                    className="flex flex-col items-center gap-2 group"
+                    tabIndex={0}
                   >
-                    {hero.name}
+                    <div className="relative">
+                      <div
+                        className={`${
+                          isTopThree ? "w-20 h-20" : "w-14 h-14"
+                        } rounded-full bg-slate-950/25 glass border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
+                          hero.attackType === "Magic"
+                            ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+                            : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
+                        }`}
+                      >
+                        {showImage ? (
+                          <img
+                            src={`/heroes/${id}.png`}
+                            alt={hero.name}
+                            className="w-full h-full object-cover"
+                            onError={() => handleImageError(id)}
+                          />
+                        ) : (
+                          <span
+                            className={`text-white font-black ${
+                              isTopThree ? "text-sm" : "text-xs"
+                            } text-center leading-none px-1`}
+                          >
+                            {hero.name}
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-gradient-to-br ${getTierColor(
+                          hero.tier
+                        )} border border-white/10 shadow-lg`}
+                      >
+                        {hero.tier}
+                      </div>
+                    </div>
+                    <div
+                      className={`text-[10px] font-bold text-slate-300 text-center leading-tight max-w-[5.5rem] ${
+                        isTopThree ? "" : "opacity-80"
+                      }`}
+                    >
+                      {hero.name}
+                    </div>
                   </div>
-                </div>
-              </HeroHoverCard>
-            </div>
-          ) : null;
-        })}
+                </HeroHoverCard>
+              </div>
+            ) : null;
+          })}
+        </div>
       </div>
 
       <div className="hidden md:block">
@@ -359,11 +388,11 @@ const StrategyCard: React.FC<Props> = ({
       if (!queue || queue.length === 0) return null;
 
       return (
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-start md:items-end gap-1">
           <div className="text-[10px] font-black uppercase tracking-widest text-blue-300">
             Skill Queue
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-start md:justify-end">
             {queue.slice(0, 3).map((s, idx) => {
               const hero = getHero(s.heroId);
               const badge = s.skill === "top" ? "T" : "B";
@@ -469,16 +498,50 @@ const StrategyCard: React.FC<Props> = ({
               })}
             </div>
 
-            <div className="flex-1 space-y-4 pb-10">
+            <div className="flex-1 space-y-4 pb-4 md:pb-10">
               {/* Mobile: chips */}
-              <div className="flex flex-wrap gap-2 md:hidden">
-                {log.counterTeam.map((id) => (
-                  <HeroNameChip
-                    key={id}
-                    heroId={id}
-                    tone={log.type === "success" ? "success" : "fail"}
-                  />
-                ))}
+              <div className="md:hidden flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mx-1 px-1">
+                {log.counterTeam.slice(0, 3).map((id, index) => {
+                  const hero = getHero(id);
+                  if (!hero) return null;
+                  const border =
+                    hero.attackType === "Magic"
+                      ? "border-blue-500/50"
+                      : "border-orange-500/50";
+                  return (
+                    <div
+                      key={id}
+                      className="shrink-0"
+                      draggable={isIcewind}
+                      onDragStart={(e) =>
+                        handleCounterDragStart(e, index, log.id)
+                      }
+                      onDragOver={(e) => handleDragOver(e)}
+                      onDrop={(e) => handleCounterDrop(e, index, log)}
+                    >
+                      <HeroHoverCard hero={hero}>
+                        <div
+                          tabIndex={0}
+                          className={`w-12 h-12 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)]`}
+                        >
+                          {!imageErrors[id] ? (
+                            <img
+                              src={`/heroes/${id}.png`}
+                              alt={hero.name}
+                              className="w-full h-full object-cover"
+                              onError={() => handleImageError(id)}
+                            />
+                          ) : (
+                            <span className="text-white font-black text-[10px] text-center leading-none px-1">
+                              {hero.name.charAt(0)}
+                            </span>
+                          )}
+                          <span className="sr-only">{hero.name}</span>
+                        </div>
+                      </HeroHoverCard>
+                    </div>
+                  );
+                })}
               </div>
 
               <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
@@ -574,9 +637,9 @@ const StrategyCard: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Skill Queue - positioned at bottom right */}
+        {/* Skill Queue: inline on mobile, bottom-right on md+ */}
         {log.skillQueue && log.skillQueue.length > 0 && (
-          <div className="absolute bottom-0 right-0 px-5 pb-3 max-w-[calc(100%-5rem)]">
+          <div className="mt-4 md:mt-0 md:absolute md:bottom-0 md:right-0 px-0 md:px-5 pb-0 md:pb-3 max-w-full md:max-w-[calc(100%-5rem)]">
             <SkillQueueRow queue={log.skillQueue} />
           </div>
         )}
