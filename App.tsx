@@ -5,6 +5,7 @@ import StrategyCard from "./components/StrategyCard";
 import HeroAutocomplete from "./components/HeroAutocomplete";
 import HeroAvatar from "./components/HeroAvatar";
 import AuthModal from "./components/AuthModal";
+import UsernameSetupModal from "./components/UsernameSetupModal";
 import { getSupabaseBrowserClient } from "./lib/supabase/browserClient";
 import { HERO_DATABASE } from "./constants";
 
@@ -51,6 +52,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [supabaseReady, setSupabaseReady] = useState(true);
+  const [showUsernameSetup, setShowUsernameSetup] = useState(false);
 
   // New filter states
   const [activeTab, setActiveTab] = useState<"reports" | "stats">("reports");
@@ -84,6 +86,11 @@ const App: React.FC = () => {
       const sessionUser = sessionData.session?.user ?? null;
       const user = userData.user ?? sessionUser;
       setAuthEmail(user?.email ?? null);
+
+      // Check if user needs to set username (first-time Discord users)
+      if (user && !user.user_metadata?.ingame_name) {
+        setShowUsernameSetup(true);
+      }
 
       const { data, error } = await client
         .from("strategy_logs")
@@ -121,6 +128,11 @@ const App: React.FC = () => {
       async (_event, session) => {
         const user = session?.user ?? null;
         setAuthEmail(user?.email ?? null);
+
+        // Check if user needs username setup
+        if (user && !user.user_metadata?.ingame_name) {
+          setShowUsernameSetup(true);
+        }
       }
     );
 
@@ -719,6 +731,11 @@ const App: React.FC = () => {
           open={authModalOpen}
           reason={authModalReason}
           onClose={() => setAuthModalOpen(false)}
+        />
+
+        <UsernameSetupModal
+          open={showUsernameSetup}
+          onComplete={() => setShowUsernameSetup(false)}
         />
 
         {!supabaseReady ? (
