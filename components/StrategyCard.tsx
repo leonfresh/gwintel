@@ -271,10 +271,10 @@ const StrategyCard: React.FC<Props> = ({
 
   const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => {
     const isOwnPost = Boolean(currentUserId && log.authorId === currentUserId);
-    const cardBg =
+    const leftTint =
       log.type === "success"
-        ? "bg-emerald-950/18 hover:bg-emerald-950/22"
-        : "bg-rose-950/18 hover:bg-rose-950/22";
+        ? "md:before:from-emerald-500/18"
+        : "md:before:from-rose-500/18";
 
     const SkillQueueRow: React.FC<{ queue: SkillQueueItem[] }> = ({
       queue,
@@ -336,7 +336,7 @@ const StrategyCard: React.FC<Props> = ({
 
     return (
       <div
-        className={`relative overflow-hidden p-5 ${cardBg} glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl`}
+        className={`relative overflow-hidden p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl before:content-[''] before:hidden md:before:block before:absolute before:inset-y-0 before:left-0 md:before:w-28 before:bg-gradient-to-r before:to-transparent ${leftTint}`}
       >
         <div className="flex justify-between items-start gap-6">
           <div className="flex items-start gap-5 flex-1">
