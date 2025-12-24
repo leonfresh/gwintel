@@ -58,6 +58,7 @@ const App: React.FC = () => {
     "all"
   );
   const [minVotes, setMinVotes] = useState<number>(0);
+  const [squadVotes, setSquadVotes] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const client = getSupabaseBrowserClient();
@@ -94,6 +95,21 @@ const App: React.FC = () => {
       } else {
         setLogs((data as DbStrategyLogRow[]).map(toStrategyLog));
       }
+
+      // Load squad votes
+      const { data: squadVotesData, error: squadVotesError } = await client
+        .from("squad_votes")
+        .select("squad_key, value");
+
+      if (!cancelled && !squadVotesError && squadVotesData) {
+        const voteCounts: Record<string, number> = {};
+        squadVotesData.forEach((vote: { squad_key: string; value: number }) => {
+          voteCounts[vote.squad_key] =
+            (voteCounts[vote.squad_key] || 0) + vote.value;
+        });
+        setSquadVotes(voteCounts);
+      }
+
       setLoading(false);
     };
 
@@ -244,6 +260,83 @@ const App: React.FC = () => {
     );
   };
 
+  const handleSquadVote = async (squadKey: string, type: "up" | "down") => {
+    if (!ensureSignedIn("vote")) return;
+
+    const client = getSupabaseBrowserClient();
+    if (!client) return;
+
+    const { data: userData } = await client.auth.getUser();
+    const user = userData.user;
+    if (!user) {
+      setAuthModalReason("vote");
+      setAuthModalOpen(true);
+      return;
+    }
+
+    const desired = type === "up" ? 1 : -1;
+
+    const { data: existingVote, error: existingError } = await client
+      .from("squad_votes")
+      .select("value")
+      .eq("squad_key", squadKey)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingError) {
+      alert(existingError.message);
+      return;
+    }
+
+    const oldValue = (existingVote as { value?: number } | null)?.value ?? 0;
+
+    if (oldValue === desired) {
+      // Remove vote
+      const { error } = await client
+        .from("squad_votes")
+        .delete()
+        .eq("squad_key", squadKey)
+        .eq("user_id", user.id);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+    } else {
+      // Add or update vote
+      const { error } = await client
+        .from("squad_votes")
+        .upsert(
+          { squad_key: squadKey, user_id: user.id, value: desired },
+          { onConflict: "squad_key,user_id" }
+        );
+      if (error) {
+        alert(error.message);
+        return;
+      }
+    }
+
+    // Recalculate total votes for this squad
+    const { data: allVotes, error: votesError } = await client
+      .from("squad_votes")
+      .select("value")
+      .eq("squad_key", squadKey);
+
+    if (votesError) {
+      alert(votesError.message);
+      return;
+    }
+
+    const totalVotes = (allVotes as { value: number }[]).reduce(
+      (sum, v) => sum + v.value,
+      0
+    );
+
+    setSquadVotes((prev) => ({
+      ...prev,
+      [squadKey]: totalVotes,
+    }));
+  };
+
   const openAddLog = (enemyIds?: string[], type?: LogType) => {
     if (!ensureSignedIn("post")) return;
     setAddState({ enemyIds, type });
@@ -290,9 +383,12 @@ const App: React.FC = () => {
     // Sort squads
     return entries.sort((a, b) => {
       if (sortBy === "votes") {
-        const votesA = a[1].reduce((sum, l) => sum + l.votes, 0);
-        const votesB = b[1].reduce((sum, l) => sum + l.votes, 0);
-        return votesB - votesA;
+        // Sort by squad votes (new separate voting system)
+        const squadKeyA = a[0];
+        const squadKeyB = b[0];
+        const squadVotesA = squadVotes[squadKeyA] || 0;
+        const squadVotesB = squadVotes[squadKeyB] || 0;
+        return squadVotesB - squadVotesA;
       } else {
         // Sort by most recent
         const dateA = Math.max(...a[1].map((l) => l.createdAt));
@@ -300,7 +396,7 @@ const App: React.FC = () => {
         return dateB - dateA;
       }
     });
-  }, [logs, filterHeroIds, sortBy, typeFilter, minVotes]);
+  }, [logs, filterHeroIds, sortBy, typeFilter, minVotes, squadVotes]);
 
   // Stats calculations
   const stats = useMemo(() => {
@@ -755,7 +851,9 @@ const App: React.FC = () => {
                   key={key}
                   enemyIds={key.split(",")}
                   logs={logs}
+                  squadVotes={squadVotes[key] || 0}
                   onVote={handleVote}
+                  onSquadVote={(type) => handleSquadVote(key, type)}
                   onAddLog={openAddLog}
                 />
               ))

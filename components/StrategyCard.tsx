@@ -5,14 +5,18 @@ import { HERO_DATABASE } from "../constants";
 interface Props {
   enemyIds: string[];
   logs: StrategyLog[];
+  squadVotes: number;
   onVote: (id: string, type: "up" | "down") => void;
+  onSquadVote: (type: "up" | "down") => void;
   onAddLog: (enemyIds: string[], type: LogType) => void;
 }
 
 const StrategyCard: React.FC<Props> = ({
   enemyIds,
   logs,
+  squadVotes,
   onVote,
+  onSquadVote,
   onAddLog,
 }) => {
   const getHero = (id: string) => HERO_DATABASE.find((h) => h.id === id);
@@ -22,9 +26,6 @@ const StrategyCard: React.FC<Props> = ({
   const failLogs = logs
     .filter((l) => l.type === "fail")
     .sort((a, b) => b.votes - a.votes);
-
-  // Calculate total squad votes
-  const totalSquadVotes = logs.reduce((sum, l) => sum + l.votes, 0);
 
   // Determine overall threat level based on the highest hero tier
   const tierWeights = {
@@ -62,29 +63,49 @@ const StrategyCard: React.FC<Props> = ({
         )}`}
       ></div>
 
-      {/* Squad Total Votes Badge */}
-      <div className="flex flex-col items-center">
+      {/* Squad Votes with Up/Down Buttons */}
+      <div className="flex flex-col items-center gap-2">
         <div
-          className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${
-            totalSquadVotes >= 0 ? "text-emerald-500" : "text-rose-500"
+          className={`text-[10px] font-black uppercase tracking-[0.3em] ${
+            squadVotes >= 0 ? "text-emerald-500" : "text-rose-500"
           }`}
         >
-          Squad Votes
+          Squad Rating
         </div>
-        <div
-          className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black shadow-2xl border border-white/10 italic ${
-            totalSquadVotes >= 10
-              ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-white"
-              : totalSquadVotes >= 5
-              ? "bg-gradient-to-br from-emerald-500 to-green-600 text-white"
-              : totalSquadVotes >= 0
-              ? "bg-gradient-to-br from-blue-500 to-blue-700 text-white"
-              : "bg-gradient-to-br from-slate-600 to-slate-800 text-slate-300"
-          }`}
-        >
-          {totalSquadVotes > 0 ? `+${totalSquadVotes}` : totalSquadVotes}
+        <div className="flex flex-col items-center gap-1 bg-slate-800/50 py-3 px-4 rounded-xl border border-slate-700/50">
+          <button
+            onClick={() => onSquadVote("up")}
+            className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M14.707 9.293l-4-4a1 1 0 00-1.414 0l-4 4a1 1 0 101.414 1.414L9 8.414V15a1 1 0 102 0V8.414l2.293 2.293a1 1 0 001.414-1.414z" />
+            </svg>
+          </button>
+          <div
+            className={`text-2xl font-black italic ${
+              squadVotes >= 10
+                ? "text-yellow-400"
+                : squadVotes >= 5
+                ? "text-emerald-400"
+                : squadVotes > 0
+                ? "text-blue-400"
+                : squadVotes < 0
+                ? "text-rose-400"
+                : "text-slate-400"
+            }`}
+          >
+            {squadVotes > 0 ? `+${squadVotes}` : squadVotes}
+          </div>
+          <button
+            onClick={() => onSquadVote("down")}
+            className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-125 active:scale-95"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M5.293 10.707l4 4a1 1 0 001.414 0l4-4a1 1 0 00-1.414-1.414L11 11.586V5a1 1 0 10-2 0v6.586L6.707 9.293a1 1 0 00-1.414 1.414z" />
+            </svg>
+          </button>
         </div>
-        <div className="text-[8px] font-bold text-slate-500 mt-1 uppercase tracking-wider">
+        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
           {logs.length} {logs.length === 1 ? "report" : "reports"}
         </div>
       </div>
