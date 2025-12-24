@@ -271,6 +271,10 @@ const StrategyCard: React.FC<Props> = ({
 
   const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => {
     const isOwnPost = Boolean(currentUserId && log.authorId === currentUserId);
+    const cardBg =
+      log.type === "success"
+        ? "bg-gradient-to-br from-emerald-500/12 via-slate-900/70 to-slate-900/70 hover:from-emerald-500/16 hover:via-slate-900/75 hover:to-slate-900/75"
+        : "bg-gradient-to-br from-rose-500/12 via-slate-900/70 to-slate-900/70 hover:from-rose-500/16 hover:via-slate-900/75 hover:to-slate-900/75";
 
     const SkillQueueRow: React.FC<{ queue: SkillQueueItem[] }> = ({
       queue,
@@ -279,7 +283,7 @@ const StrategyCard: React.FC<Props> = ({
 
       return (
         <div className="flex flex-wrap items-center gap-2">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+          <div className="text-[11px] font-black uppercase tracking-widest text-blue-300">
             Skill Queue
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -294,19 +298,26 @@ const StrategyCard: React.FC<Props> = ({
                   <span className="inline-flex items-center gap-2 px-3 py-1 rounded-xl border border-white/10 bg-slate-950/20 glass text-slate-200 text-xs font-black">
                     <span className="w-5 h-5 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center text-[10px]">
                       {hero ? (
-                        <img
-                          src={`/heroes/${hero.id}.png`}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
+                        imageErrors[hero.id] ? (
+                          <span className="text-white font-black">
+                            {hero.name.charAt(0)}
+                          </span>
+                        ) : (
+                          <img
+                            src={`/heroes/${hero.id}.png`}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            onError={() => handleImageError(hero.id)}
+                          />
+                        )
                       ) : (
-                        <span>?</span>
+                        <span className="text-white font-black">?</span>
                       )}
                     </span>
                     <span className="text-slate-300">
                       {hero ? hero.name : "Unknown"}
                     </span>
-                    <span className="px-1.5 py-0.5 rounded-lg bg-blue-500/15 border border-blue-500/20 text-blue-200 text-[10px] font-black">
+                    <span className="px-1.5 py-0.5 rounded-lg bg-blue-500/25 border border-blue-500/30 text-blue-100 text-[10px] font-black">
                       {badge}
                     </span>
                   </span>
@@ -324,7 +335,9 @@ const StrategyCard: React.FC<Props> = ({
     };
 
     return (
-      <div className="p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all hover:bg-slate-900/75 shadow-sm hover:shadow-xl">
+      <div
+        className={`p-5 ${cardBg} glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl`}
+      >
         <div className="flex justify-between items-start gap-6">
           <div className="flex items-start gap-5 flex-1">
             {/* Desktop: stacked hero icons */}
@@ -346,12 +359,18 @@ const StrategyCard: React.FC<Props> = ({
                       tabIndex={0}
                       className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform`}
                     >
-                      <img
-                        src={`/heroes/${id}.png`}
-                        alt={hero.name}
-                        className="w-full h-full object-cover"
-                        onError={() => handleImageError(id)}
-                      />
+                      {!imageErrors[id] ? (
+                        <img
+                          src={`/heroes/${id}.png`}
+                          alt={hero.name}
+                          className="w-full h-full object-cover"
+                          onError={() => handleImageError(id)}
+                        />
+                      ) : (
+                        <span className="text-white font-black text-sm text-center leading-none px-1">
+                          {hero.name}
+                        </span>
+                      )}
                       <span className="sr-only">{hero.name}</span>
                       <span className={`sr-only ${ring}`}></span>
                     </div>

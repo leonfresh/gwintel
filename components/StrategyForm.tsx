@@ -185,13 +185,19 @@ const StrategyForm: React.FC<Props> = ({
               >
                 <HeroHoverCard hero={h}>
                   <span
-                    className="w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2"
+                    className="relative w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2"
                     tabIndex={0}
                   >
+                    <span className="text-white font-black text-[10px]">
+                      {h.name.charAt(0)}
+                    </span>
                     <img
                       src={`/heroes/${h.id}.png`}
                       alt=""
-                      className="w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
                   </span>
                 </HeroHoverCard>
@@ -268,13 +274,19 @@ const StrategyForm: React.FC<Props> = ({
               >
                 <HeroHoverCard hero={h}>
                   <span
-                    className="w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2"
+                    className="relative w-6 h-6 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center mr-2"
                     tabIndex={0}
                   >
+                    <span className="text-white font-black text-[10px]">
+                      {h.name.charAt(0)}
+                    </span>
                     <img
                       src={`/heroes/${h.id}.png`}
                       alt=""
-                      className="w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
                   </span>
                 </HeroHoverCard>
@@ -330,13 +342,19 @@ const StrategyForm: React.FC<Props> = ({
                       return hero ? (
                         <HeroHoverCard hero={hero}>
                           <span
-                            className="w-7 h-7 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center"
+                            className="relative w-7 h-7 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center"
                             tabIndex={0}
                           >
+                            <span className="text-white font-black text-[10px]">
+                              {hero.name.charAt(0)}
+                            </span>
                             <img
                               src={`/heroes/${slot.heroId}.png`}
                               alt=""
-                              className="w-full h-full object-cover"
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
                             />
                           </span>
                         </HeroHoverCard>
