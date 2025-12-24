@@ -638,13 +638,47 @@ const App: React.FC = () => {
     setAuthEmail(null);
   };
 
+  const HeroMiniChip: React.FC<{
+    hero: Hero;
+    variant: "fail" | "success";
+  }> = ({ hero, variant }) => {
+    const palette =
+      variant === "success"
+        ? "bg-emerald-500/10 text-emerald-200 border-emerald-500/20"
+        : "bg-rose-500/10 text-rose-200 border-rose-500/20";
+    const ring =
+      variant === "success" ? "border-emerald-400/30" : "border-rose-400/30";
+
+    return (
+      <span
+        className={`inline-flex items-center gap-2 text-xs font-bold px-2.5 py-1 rounded-lg border ${palette}`}
+      >
+        <span
+          className={`w-4 h-4 rounded-full overflow-hidden border ${ring} bg-slate-900/40 flex items-center justify-center text-[9px] font-black text-slate-200`}
+          aria-hidden="true"
+        >
+          <img
+            src={`/heroes/${hero.id}.png`}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+          <span className="leading-none">{hero.name.charAt(0)}</span>
+        </span>
+        <span>{hero.name}</span>
+      </span>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen">
       {/* Navbar */}
-      <nav className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+      <nav className="border-b border-white/10 bg-slate-950/35 glass sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg rotate-3">
+            <div className="w-10 h-10 bg-blue-600/90 rounded-xl flex items-center justify-center shadow-lg rotate-3">
               <svg
                 className="w-6 h-6 text-white"
                 fill="none"
@@ -672,7 +706,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
             {authEmail ? (
               <>
-                <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-900/30 glass rounded-xl border border-white/10">
                   <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                   <span className="text-sm text-slate-300 font-semibold">
                     {authEmail.split("@")[0]}
@@ -680,7 +714,7 @@ const App: React.FC = () => {
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-sm rounded-xl border border-slate-700 transition-all flex items-center gap-2"
+                  className="px-4 py-2 bg-slate-900/30 glass hover:bg-slate-900/45 text-slate-200 hover:text-white font-bold text-sm rounded-xl border border-white/10 transition-all flex items-center gap-2"
                 >
                   <svg
                     className="w-4 h-4"
@@ -704,7 +738,7 @@ const App: React.FC = () => {
                   setAuthModalReason("generic");
                   setAuthModalOpen(true);
                 }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-blue-600/90 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-all flex items-center gap-2"
               >
                 <svg
                   className="w-4 h-4"
@@ -739,7 +773,7 @@ const App: React.FC = () => {
         />
 
         {!supabaseReady ? (
-          <div className="mb-8 p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-200">
+          <div className="mb-8 p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 glass text-rose-200">
             Missing Supabase env vars. Add{" "}
             <span className="font-mono">NEXT_PUBLIC_SUPABASE_URL</span> and{" "}
             <span className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</span> (or{" "}
@@ -753,7 +787,7 @@ const App: React.FC = () => {
         <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-[0_10px_40px_rgba(59,130,246,0.6)] rotate-3 border border-blue-400/30">
+              <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-[0_10px_30px_rgba(37,99,235,0.4)] rotate-3">
                 <svg
                   className="w-8 h-8 text-white"
                   fill="none"
@@ -786,7 +820,7 @@ const App: React.FC = () => {
           {!showForm && (
             <button
               onClick={() => openAddLog()}
-              className="px-10 py-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-black rounded-2xl transition-all shadow-2xl hover:shadow-blue-500/50 hover:scale-105 active:scale-95 flex items-center gap-3 uppercase tracking-widest text-sm italic border border-blue-400/30"
+              className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-3 uppercase tracking-widest text-sm italic"
             >
               <span>NEW SQUAD REPORT</span>
               <svg
@@ -808,7 +842,7 @@ const App: React.FC = () => {
 
         <main className="space-y-12">
           {loading ? (
-            <div className="glass p-10 rounded-3xl text-slate-400 shadow-xl">
+            <div className="p-10 rounded-3xl border border-white/10 bg-slate-950/25 glass text-slate-300">
               Loading intelligence...
             </div>
           ) : null}
@@ -853,11 +887,11 @@ const App: React.FC = () => {
 
           {/* Improved Filter UI with Tags */}
           {activeTab === "reports" && (
-            <div className="glass-light p-6 rounded-[2rem] space-y-4 shadow-xl">
+            <div className="bg-slate-950/25 glass p-6 rounded-[2rem] border-2 border-white/10 space-y-4 shadow-xl">
               {/* Hero Tags Search */}
               <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
                 <div className="flex items-center gap-3 text-slate-400 whitespace-nowrap">
-                  <div className="p-2 bg-slate-700 rounded-lg">
+                  <div className="p-2 bg-slate-900/40 glass rounded-lg border border-white/10">
                     <svg
                       className="w-5 h-5"
                       fill="currentColor"
@@ -895,7 +929,7 @@ const App: React.FC = () => {
                     return hero ? (
                       <div
                         key={heroId}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded-xl text-blue-300 font-bold text-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-500/15 glass border border-blue-500/25 rounded-xl text-blue-200 font-bold text-sm"
                       >
                         <span>{hero.name}</span>
                         <button
@@ -925,7 +959,7 @@ const App: React.FC = () => {
                   })}
                   <button
                     onClick={() => setFilterHeroIds([])}
-                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl text-xs font-black transition-all"
+                    className="px-4 py-2 bg-slate-900/40 glass hover:bg-slate-900/55 text-slate-200 rounded-xl text-xs font-black transition-all border border-white/10"
                   >
                     CLEAR ALL
                   </button>
@@ -943,7 +977,7 @@ const App: React.FC = () => {
                     onChange={(e) =>
                       setSortBy(e.target.value as "votes" | "date")
                     }
-                    className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm font-bold text-white focus:ring-2 focus:ring-blue-500"
+                    className="px-4 py-2 bg-slate-900/35 glass border border-white/10 rounded-lg text-sm font-bold text-white focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="votes">Most Upvoted</option>
                     <option value="date">Most Recent</option>
@@ -961,7 +995,7 @@ const App: React.FC = () => {
                         e.target.value as "all" | "success" | "fail"
                       )
                     }
-                    className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm font-bold text-white focus:ring-2 focus:ring-blue-500"
+                    className="px-4 py-2 bg-slate-900/35 glass border border-white/10 rounded-lg text-sm font-bold text-white focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="all">All Reports</option>
                     <option value="success">Success Only</option>
@@ -979,7 +1013,7 @@ const App: React.FC = () => {
                     onChange={(e) =>
                       setMinVotes(Math.max(0, parseInt(e.target.value) || 0))
                     }
-                    className="w-20 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm font-bold text-white focus:ring-2 focus:ring-blue-500"
+                    className="w-20 px-3 py-2 bg-slate-900/35 glass border border-white/10 rounded-lg text-sm font-bold text-white focus:ring-2 focus:ring-blue-500"
                     min="0"
                   />
                 </div>
@@ -993,7 +1027,7 @@ const App: React.FC = () => {
                     className={`p-2 rounded-lg border transition-all ${
                       compactView
                         ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
-                        : "bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-300"
+                        : "bg-slate-900/35 glass border-white/10 text-slate-400 hover:text-slate-200"
                     }`}
                     title="Toggle compact view"
                   >
@@ -1044,8 +1078,8 @@ const App: React.FC = () => {
                   );
                 })
               ) : (
-                <div className="col-span-full py-32 flex flex-col items-center justify-center text-slate-700 bg-slate-800/20 rounded-[3rem] border-4 border-dashed border-slate-800">
-                  <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-6">
+                <div className="col-span-full py-32 flex flex-col items-center justify-center text-slate-500 bg-slate-950/15 glass rounded-[3rem] border-2 border-dashed border-white/10">
+                  <div className="w-24 h-24 bg-slate-900/35 glass rounded-full flex items-center justify-center mb-6 border border-white/10">
                     <svg
                       className="w-12 h-12 opacity-20"
                       fill="none"
@@ -1072,7 +1106,7 @@ const App: React.FC = () => {
             <div className="space-y-8">
               {/* Overview Stats Cards */}
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-2xl p-6 text-center">
+                <div className="bg-gradient-to-br from-blue-500/12 to-blue-600/5 border border-blue-500/20 rounded-2xl p-6 text-center glass">
                   <div className="text-4xl font-black text-blue-400">
                     {stats.totalReports}
                   </div>
@@ -1080,7 +1114,7 @@ const App: React.FC = () => {
                     Total Reports
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-2xl p-6 text-center">
+                <div className="bg-gradient-to-br from-emerald-500/12 to-emerald-600/5 border border-emerald-500/20 rounded-2xl p-6 text-center glass">
                   <div className="text-4xl font-black text-emerald-400">
                     {stats.totalSuccess}
                   </div>
@@ -1088,7 +1122,7 @@ const App: React.FC = () => {
                     Successful
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-rose-500/10 to-rose-600/5 border border-rose-500/20 rounded-2xl p-6 text-center">
+                <div className="bg-gradient-to-br from-rose-500/12 to-rose-600/5 border border-rose-500/20 rounded-2xl p-6 text-center glass">
                   <div className="text-4xl font-black text-rose-400">
                     {stats.totalFail}
                   </div>
@@ -1096,7 +1130,7 @@ const App: React.FC = () => {
                     Failed
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-2xl p-6 text-center">
+                <div className="bg-gradient-to-br from-purple-500/12 to-purple-600/5 border border-purple-500/20 rounded-2xl p-6 text-center glass">
                   <div className="text-4xl font-black text-purple-400">
                     {stats.uniqueSquads}
                   </div>
@@ -1104,7 +1138,7 @@ const App: React.FC = () => {
                     Unique Squads
                   </div>
                 </div>
-                <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-2xl p-6 text-center">
+                <div className="bg-gradient-to-br from-amber-500/12 to-amber-600/5 border border-amber-500/20 rounded-2xl p-6 text-center glass">
                   <div className="text-4xl font-black text-amber-400">
                     {stats.avgVotes.toFixed(1)}
                   </div>
@@ -1115,7 +1149,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Most Reported Enemy Heroes */}
-              <div className="glass-light p-8 rounded-[2rem] shadow-xl">
+              <div className="bg-slate-950/20 glass p-8 rounded-[2rem] border-2 border-white/10">
                 <h3 className="text-xl font-black text-rose-400 uppercase tracking-wider mb-6 flex items-center gap-3">
                   <svg
                     className="w-6 h-6"
@@ -1137,7 +1171,7 @@ const App: React.FC = () => {
                     hero ? (
                       <div
                         key={hero.id}
-                        className="glass-light p-4 rounded-xl border border-slate-700/50 text-center flex flex-col items-center gap-3 hover:border-rose-400/40 transition-all"
+                        className="bg-slate-950/15 glass p-4 rounded-xl border border-white/10 text-center flex flex-col items-center gap-3"
                       >
                         <HeroAvatar hero={hero} size="lg" showTier />
                         <div>
@@ -1158,7 +1192,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Top Counter Heroes */}
-              <div className="glass-light p-8 rounded-[2rem] shadow-xl">
+              <div className="bg-slate-950/20 glass p-8 rounded-[2rem] border-2 border-white/10">
                 <h3 className="text-xl font-black text-emerald-400 uppercase tracking-wider mb-6 flex items-center gap-3">
                   <svg
                     className="w-6 h-6"
@@ -1180,7 +1214,7 @@ const App: React.FC = () => {
                     hero ? (
                       <div
                         key={hero.id}
-                        className="glass-light p-4 rounded-xl border border-slate-700/50 text-center flex flex-col items-center gap-3 hover:border-emerald-400/40 transition-all"
+                        className="bg-slate-950/15 glass p-4 rounded-xl border border-white/10 text-center flex flex-col items-center gap-3"
                       >
                         <HeroAvatar hero={hero} size="lg" showTier />
                         <div>
@@ -1201,7 +1235,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Top Heroes for Offense (with win rates) */}
-              <div className="glass-light p-8 rounded-[2rem] shadow-xl">
+              <div className="bg-slate-950/20 glass p-8 rounded-[2rem] border-2 border-white/10">
                 <h3 className="text-xl font-black text-blue-400 uppercase tracking-wider mb-6 flex items-center gap-3">
                   <svg
                     className="w-6 h-6"
@@ -1224,7 +1258,7 @@ const App: React.FC = () => {
                       hero ? (
                         <div
                           key={hero.id}
-                          className="glass-light p-4 rounded-xl border border-blue-500/20 text-center flex flex-col items-center gap-3 hover:border-blue-400/40 transition-all"
+                          className="bg-slate-950/15 glass p-4 rounded-xl border border-blue-500/20 text-center flex flex-col items-center gap-3"
                         >
                           <HeroAvatar hero={hero} size="lg" showTier />
                           <div>
@@ -1265,7 +1299,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Top Heroes for Defense (with defense rates) */}
-              <div className="glass-light p-8 rounded-[2rem] shadow-xl">
+              <div className="bg-slate-950/20 glass p-8 rounded-[2rem] border-2 border-white/10">
                 <h3 className="text-xl font-black text-orange-400 uppercase tracking-wider mb-6 flex items-center gap-3">
                   <svg
                     className="w-6 h-6"
@@ -1288,7 +1322,7 @@ const App: React.FC = () => {
                       hero ? (
                         <div
                           key={hero.id}
-                          className="glass-light p-4 rounded-xl border border-orange-500/20 text-center flex flex-col items-center gap-3 hover:border-orange-400/40 transition-all"
+                          className="bg-slate-950/15 glass p-4 rounded-xl border border-orange-500/20 text-center flex flex-col items-center gap-3"
                         >
                           <HeroAvatar hero={hero} size="lg" showTier />
                           <div>
@@ -1330,7 +1364,7 @@ const App: React.FC = () => {
 
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Most Failed Enemy Teams */}
-                <div className="glass-light p-8 rounded-[2rem] shadow-xl">
+                <div className="bg-slate-950/20 glass p-8 rounded-[2rem] border-2 border-white/10">
                   <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider mb-6">
                     💀 Most Failed Enemy Teams
                   </h3>
@@ -1338,18 +1372,17 @@ const App: React.FC = () => {
                     {stats.mostFailedTeams.map(({ enemyIds, count }, idx) => (
                       <div
                         key={idx}
-                        className="glass-light p-4 rounded-xl border border-rose-500/20 flex items-center justify-between hover:border-rose-400/40 transition-all"
+                        className="bg-slate-950/15 glass p-4 rounded-xl border border-rose-500/20 flex items-center justify-between"
                       >
                         <div className="flex flex-wrap gap-2">
                           {enemyIds.map((id) => {
                             const hero = getHero(id);
                             return hero ? (
-                              <span
+                              <HeroMiniChip
                                 key={id}
-                                className="text-xs font-bold px-2 py-1 bg-rose-500/10 text-rose-300 rounded-lg"
-                              >
-                                {hero.name}
-                              </span>
+                                hero={hero}
+                                variant="fail"
+                              />
                             ) : null;
                           })}
                         </div>
@@ -1362,7 +1395,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Most Successful Counter Teams */}
-                <div className="glass-light p-8 rounded-[2rem] shadow-xl">
+                <div className="bg-slate-950/20 glass p-8 rounded-[2rem] border-2 border-white/10">
                   <h3 className="text-lg font-black text-emerald-400 uppercase tracking-wider mb-6">
                     ✨ Most Successful Counter Teams
                   </h3>
@@ -1371,18 +1404,17 @@ const App: React.FC = () => {
                       ({ counterIds, count }, idx) => (
                         <div
                           key={idx}
-                          className="glass-light p-4 rounded-xl border border-emerald-500/20 flex items-center justify-between hover:border-emerald-400/40 transition-all"
+                          className="bg-slate-950/15 glass p-4 rounded-xl border border-emerald-500/20 flex items-center justify-between"
                         >
                           <div className="flex flex-wrap gap-2">
                             {counterIds.map((id) => {
                               const hero = getHero(id);
                               return hero ? (
-                                <span
+                                <HeroMiniChip
                                   key={id}
-                                  className="text-xs font-bold px-2 py-1 bg-emerald-500/10 text-emerald-300 rounded-lg"
-                                >
-                                  {hero.name}
-                                </span>
+                                  hero={hero}
+                                  variant="success"
+                                />
                               ) : null;
                             })}
                           </div>
@@ -1398,7 +1430,7 @@ const App: React.FC = () => {
 
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Highest Win Rate Squads */}
-                <div className="glass-light p-8 rounded-[2rem] shadow-xl">
+                <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
                   <h3 className="text-lg font-black text-emerald-400 uppercase tracking-wider mb-6">
                     🏆 Easiest Enemy Squads (3+ reports)
                   </h3>
@@ -1407,7 +1439,7 @@ const App: React.FC = () => {
                       ({ enemyIds, success, fail, winRate }, idx) => (
                         <div
                           key={idx}
-                          className="glass-light p-4 rounded-xl border border-emerald-500/20 hover:border-emerald-400/40 transition-all"
+                          className="bg-slate-900/40 p-4 rounded-xl border border-emerald-500/20"
                         >
                           <div className="flex flex-wrap gap-2 mb-2">
                             {enemyIds.map((id) => {
@@ -1437,7 +1469,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Lowest Win Rate Squads */}
-                <div className="glass-light p-8 rounded-[2rem] shadow-xl">
+                <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
                   <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider mb-6">
                     ⚠️ Hardest Enemy Squads (3+ reports)
                   </h3>
@@ -1446,7 +1478,7 @@ const App: React.FC = () => {
                       ({ enemyIds, success, fail, lossRate }, idx) => (
                         <div
                           key={idx}
-                          className="glass-light p-4 rounded-xl border border-rose-500/20 hover:border-rose-400/40 transition-all"
+                          className="bg-slate-900/40 p-4 rounded-xl border border-rose-500/20"
                         >
                           <div className="flex flex-wrap gap-2 mb-2">
                             {enemyIds.map((id) => {

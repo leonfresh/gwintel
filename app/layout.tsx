@@ -23,119 +23,60 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <style>{`body { font-family: 'Inter', sans-serif; }`}</style>
+        <style>{`
+          body { font-family: 'Inter', sans-serif; }
+
+          /* Slow, modern background motion */
+          @keyframes drift-a {
+            0% { transform: translate3d(-6%, -4%, 0) scale(1); }
+            50% { transform: translate3d(6%, 4%, 0) scale(1.06); }
+            100% { transform: translate3d(-6%, -4%, 0) scale(1); }
+          }
+          @keyframes drift-b {
+            0% { transform: translate3d(4%, 6%, 0) scale(1); }
+            50% { transform: translate3d(-4%, -6%, 0) scale(1.08); }
+            100% { transform: translate3d(4%, 6%, 0) scale(1); }
+          }
+          @keyframes drift-c {
+            0% { transform: translate3d(0%, 0%, 0) scale(1); }
+            50% { transform: translate3d(0%, 3%, 0) scale(1.04); }
+            100% { transform: translate3d(0%, 0%, 0) scale(1); }
+          }
+          .bg-orb {
+            filter: blur(70px);
+            transform: translate3d(0, 0, 0);
+            will-change: transform;
+          }
+          .animate-drift-a { animation: drift-a 28s ease-in-out infinite; }
+          .animate-drift-b { animation: drift-b 34s ease-in-out infinite; }
+          .animate-drift-c { animation: drift-c 40s ease-in-out infinite; }
+
+          /* Glassmorphism utility (colors stay in Tailwind classes) */
+          .glass {
+            -webkit-backdrop-filter: blur(18px) saturate(1.15);
+            backdrop-filter: blur(18px) saturate(1.15);
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .animate-drift-a, .animate-drift-b, .animate-drift-c { animation: none !important; }
+          }
+        `}</style>
       </head>
-      <body className="relative text-slate-100 min-h-screen overflow-x-hidden">
+      <body className="bg-slate-950 text-slate-100 min-h-screen relative overflow-x-hidden">
         <Script
           src="https://cdn.tailwindcss.com"
           strategy="beforeInteractive"
         />
-        <style>{`
-          @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-          }
-          @keyframes float {
-            0%, 100% { transform: translateY(0px) translateX(0px); }
-            33% { transform: translateY(-30px) translateX(20px); }
-            66% { transform: translateY(15px) translateX(-20px); }
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 0.6; }
-          }
-          @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-          }
-          .animated-gradient {
-            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #312e81, #1e3a8a, #0f172a);
-            background-size: 400% 400%;
-            animation: gradientShift 20s ease infinite;
-          }
-          .floating-orb {
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(80px);
-            pointer-events: none;
-            animation: float 20s ease-in-out infinite, pulse 8s ease-in-out infinite;
-          }
-          .glass {
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-          }
-          .glass::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-            animation: shimmer 3s infinite;
-          }
-          .glass-light {
-            background: rgba(30, 41, 59, 0.4);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            position: relative;
-          }
-          .glass-light::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.02), transparent);
-            animation: shimmer 3s infinite;
-          }
-        `}</style>
-        <div className="animated-gradient fixed inset-0 -z-10"></div>
-        <div
-          className="floating-orb"
-          style={{
-            width: "600px",
-            height: "600px",
-            background:
-              "radial-gradient(circle, rgba(59, 130, 246, 0.5) 0%, transparent 70%)",
-            top: "-10%",
-            left: "-10%",
-            animationDelay: "0s",
-            zIndex: -5,
-          }}
-        ></div>
-        <div
-          className="floating-orb"
-          style={{
-            width: "500px",
-            height: "500px",
-            background:
-              "radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, transparent 70%)",
-            top: "40%",
-            right: "-10%",
-            animationDelay: "5s",
-            zIndex: -5,
-          }}
-        ></div>
-        <div
-          className="floating-orb"
-          style={{
-            width: "400px",
-            height: "400px",
-            background:
-              "radial-gradient(circle, rgba(14, 165, 233, 0.3) 0%, transparent 70%)",
-            bottom: "-10%",
-            left: "30%",
-            animationDelay: "10s",
-            zIndex: -5,
-          }}
-        ></div>
+
+        {/* Animated background layers (purely decorative) */}
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div className="absolute inset-0 bg-slate-950" />
+          <div className="absolute -top-56 -left-56 w-[44rem] h-[44rem] rounded-full bg-orb animate-drift-a bg-gradient-to-br from-blue-500/25 via-fuchsia-500/15 to-transparent" />
+          <div className="absolute -bottom-64 -right-64 w-[48rem] h-[48rem] rounded-full bg-orb animate-drift-b bg-gradient-to-tr from-emerald-500/20 via-cyan-500/12 to-transparent" />
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[40rem] h-[40rem] rounded-full bg-orb animate-drift-c bg-gradient-to-r from-purple-500/12 via-blue-500/10 to-emerald-500/12" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-950/40 to-slate-950/80" />
+        </div>
+
         {children}
       </body>
     </html>

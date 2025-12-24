@@ -67,7 +67,7 @@ const StrategyCard: React.FC<Props> = ({
   };
 
   const EnemySquadHeader: React.FC = () => (
-    <div className="glass-light px-8 py-6 border-b border-white/10 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+    <div className="bg-slate-900/90 px-8 py-6 border-b border-slate-700/50 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
       {/* Background Decor */}
       <div
         className={`absolute -right-8 -top-8 w-32 h-32 blur-3xl opacity-20 bg-gradient-to-br ${getTierColor(
@@ -84,7 +84,7 @@ const StrategyCard: React.FC<Props> = ({
         >
           Squad Rating
         </div>
-        <div className="flex flex-col items-center gap-1 glass-light py-3 px-4 rounded-xl">
+        <div className="flex flex-col items-center gap-1 bg-slate-800/50 py-3 px-4 rounded-xl border border-slate-700/50">
           <button
             onClick={() => onSquadVote("up")}
             className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
@@ -208,7 +208,7 @@ const StrategyCard: React.FC<Props> = ({
   );
 
   const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => (
-    <div className="p-5 glass-light rounded-2xl group hover:shadow-lg transition-all">
+    <div className="p-5 bg-slate-800/40 rounded-2xl border border-slate-700/30 group hover:border-slate-500/40 transition-all hover:bg-slate-800/60 shadow-sm hover:shadow-xl">
       <div className="flex justify-between items-start gap-6">
         <div className="flex-1 space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -238,7 +238,7 @@ const StrategyCard: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1 min-w-[48px] glass-light py-2 rounded-xl">
+        <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-900/40 py-2 rounded-xl border border-slate-700/50">
           <button
             onClick={() => onVote(log.id, "up")}
             className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
@@ -268,12 +268,12 @@ const StrategyCard: React.FC<Props> = ({
   );
 
   return (
-    <div className="glass rounded-[2rem] overflow-hidden shadow-2xl mb-12 hover:shadow-blue-500/20 transition-all">
+    <div className="bg-slate-800 rounded-[2rem] border-2 border-slate-700/50 overflow-hidden shadow-2xl mb-12 hover:border-slate-500/50 transition-colors">
       <EnemySquadHeader />
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
         {/* Effective Column */}
         <div
-          className={`p-8 border-r border-white/5 bg-gradient-to-br from-emerald-500/5 to-transparent transition-all ${
+          className={`p-8 border-r border-slate-700/50 bg-slate-800/20 transition-all ${
             compactView ? "group relative" : ""
           }`}
         >
@@ -359,7 +359,7 @@ const StrategyCard: React.FC<Props> = ({
 
         {/* Fail Column */}
         <div
-          className={`p-8 bg-gradient-to-br from-rose-500/5 to-transparent transition-all ${
+          className={`p-8 bg-slate-900/30 transition-all ${
             compactView ? "group relative" : ""
           }`}
         >
