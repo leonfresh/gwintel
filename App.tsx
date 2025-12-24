@@ -51,6 +51,7 @@ const App: React.FC = () => {
   >("generic");
   const [loading, setLoading] = useState(true);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [authDisplayName, setAuthDisplayName] = useState<string | null>(null);
   const [supabaseReady, setSupabaseReady] = useState(true);
   const [showUsernameSetup, setShowUsernameSetup] = useState(false);
 
@@ -86,6 +87,14 @@ const App: React.FC = () => {
       const sessionUser = sessionData.session?.user ?? null;
       const user = userData.user ?? sessionUser;
       setAuthEmail(user?.email ?? null);
+
+      const ingameName =
+        typeof user?.user_metadata?.ingame_name === "string"
+          ? (user.user_metadata.ingame_name as string)
+          : null;
+      setAuthDisplayName(
+        ingameName || (user?.email ? user.email.split("@")[0] : null)
+      );
 
       // Check if user needs to set username (first-time Discord users)
       if (user && !user.user_metadata?.ingame_name) {
@@ -128,6 +137,14 @@ const App: React.FC = () => {
       async (_event, session) => {
         const user = session?.user ?? null;
         setAuthEmail(user?.email ?? null);
+
+        const ingameName =
+          typeof user?.user_metadata?.ingame_name === "string"
+            ? (user.user_metadata.ingame_name as string)
+            : null;
+        setAuthDisplayName(
+          ingameName || (user?.email ? user.email.split("@")[0] : null)
+        );
 
         // Check if user needs username setup
         if (user && !user.user_metadata?.ingame_name) {
@@ -636,12 +653,14 @@ const App: React.FC = () => {
 
     await client.auth.signOut();
     setAuthEmail(null);
+    setAuthDisplayName(null);
   };
 
   const HeroMiniChip: React.FC<{
     hero: Hero;
     variant: "fail" | "success";
   }> = ({ hero, variant }) => {
+    const [imageOk, setImageOk] = useState(true);
     const palette =
       variant === "success"
         ? "bg-emerald-500/10 text-emerald-200 border-emerald-500/20"
@@ -657,15 +676,16 @@ const App: React.FC = () => {
           className={`w-4 h-4 rounded-full overflow-hidden border ${ring} bg-slate-900/40 flex items-center justify-center text-[9px] font-black text-slate-200`}
           aria-hidden="true"
         >
-          <img
-            src={`/heroes/${hero.id}.png`}
-            alt=""
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-          <span className="leading-none">{hero.name.charAt(0)}</span>
+          {imageOk ? (
+            <img
+              src={`/heroes/${hero.id}.png`}
+              alt=""
+              className="w-full h-full object-cover"
+              onError={() => setImageOk(false)}
+            />
+          ) : (
+            <span className="leading-none">{hero.name.charAt(0)}</span>
+          )}
         </span>
         <span>{hero.name}</span>
       </span>
@@ -709,7 +729,7 @@ const App: React.FC = () => {
                 <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-900/30 glass rounded-xl border border-white/10">
                   <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
                   <span className="text-sm text-slate-300 font-semibold">
-                    {authEmail.split("@")[0]}
+                    {authDisplayName ?? authEmail.split("@")[0]}
                   </span>
                 </div>
                 <button

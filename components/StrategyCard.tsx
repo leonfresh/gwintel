@@ -66,8 +66,47 @@ const StrategyCard: React.FC<Props> = ({
     return "from-slate-600 to-slate-800 text-slate-300";
   };
 
+  const HeroNameChip: React.FC<{
+    heroId: string;
+    tone: "success" | "fail";
+  }> = ({ heroId, tone }) => {
+    const hero = getHero(heroId);
+    const [imageOk, setImageOk] = useState(true);
+
+    if (!hero) return null;
+
+    const palette =
+      tone === "success"
+        ? "bg-emerald-500/10 text-emerald-200 border-emerald-500/20"
+        : "bg-rose-500/10 text-rose-200 border-rose-500/20";
+    const ring = tone === "success" ? "border-emerald-400/30" : "border-rose-400/30";
+
+    return (
+      <span
+        className={`inline-flex items-center gap-2 text-xs font-black px-3 py-1 rounded-lg shadow-sm border ${palette}`}
+      >
+        <span
+          className={`w-4 h-4 rounded-full overflow-hidden border ${ring} bg-slate-950/25 glass flex items-center justify-center text-[9px] font-black text-slate-200`}
+          aria-hidden="true"
+        >
+          {imageOk ? (
+            <img
+              src={`/heroes/${hero.id}.png`}
+              alt=""
+              className="w-full h-full object-cover"
+              onError={() => setImageOk(false)}
+            />
+          ) : (
+            <span className="leading-none">{hero.name.charAt(0)}</span>
+          )}
+        </span>
+        <span>{hero.name}</span>
+      </span>
+    );
+  };
+
   const EnemySquadHeader: React.FC = () => (
-    <div className="bg-slate-900/90 px-8 py-6 border-b border-slate-700/50 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+    <div className="bg-slate-950/20 glass px-8 py-6 border-b border-white/10 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
       {/* Background Decor */}
       <div
         className={`absolute -right-8 -top-8 w-32 h-32 blur-3xl opacity-20 bg-gradient-to-br ${getTierColor(
@@ -84,7 +123,7 @@ const StrategyCard: React.FC<Props> = ({
         >
           Squad Rating
         </div>
-        <div className="flex flex-col items-center gap-1 bg-slate-800/50 py-3 px-4 rounded-xl border border-slate-700/50">
+        <div className="flex flex-col items-center gap-1 bg-slate-950/25 glass py-3 px-4 rounded-xl border border-white/10 shadow-lg">
           <button
             onClick={() => onSquadVote("up")}
             className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
@@ -148,7 +187,7 @@ const StrategyCard: React.FC<Props> = ({
                 <div
                   className={`${
                     isTopThree ? "w-20 h-20" : "w-14 h-14"
-                  } rounded-full bg-slate-800 border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
+                    } rounded-full bg-slate-950/25 glass border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
                     hero.attackType === "Magic"
                       ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
                       : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
@@ -208,21 +247,16 @@ const StrategyCard: React.FC<Props> = ({
   );
 
   const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => (
-    <div className="p-5 bg-slate-800/40 rounded-2xl border border-slate-700/30 group hover:border-slate-500/40 transition-all hover:bg-slate-800/60 shadow-sm hover:shadow-xl">
+    <div className="p-5 bg-slate-950/15 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all hover:bg-slate-950/25 shadow-sm hover:shadow-xl">
       <div className="flex justify-between items-start gap-6">
         <div className="flex-1 space-y-4">
           <div className="flex flex-wrap gap-2">
             {log.counterTeam.map((id) => (
-              <span
+              <HeroNameChip
                 key={id}
-                className={`text-xs font-black px-3 py-1 rounded-lg shadow-sm border ${
-                  log.type === "success"
-                    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
-                    : "bg-rose-500/10 text-rose-300 border-rose-500/20"
-                }`}
-              >
-                {getHero(id)?.name || id}
-              </span>
+                heroId={id}
+                tone={log.type === "success" ? "success" : "fail"}
+              />
             ))}
           </div>
           <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
@@ -238,7 +272,7 @@ const StrategyCard: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-900/40 py-2 rounded-xl border border-slate-700/50">
+        <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-950/20 glass py-2 rounded-xl border border-white/10">
           <button
             onClick={() => onVote(log.id, "up")}
             className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
@@ -268,12 +302,12 @@ const StrategyCard: React.FC<Props> = ({
   );
 
   return (
-    <div className="bg-slate-800 rounded-[2rem] border-2 border-slate-700/50 overflow-hidden shadow-2xl mb-12 hover:border-slate-500/50 transition-colors">
+    <div className="bg-slate-950/15 glass rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">
       <EnemySquadHeader />
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
         {/* Effective Column */}
         <div
-          className={`p-8 border-r border-slate-700/50 bg-slate-800/20 transition-all ${
+          className={`p-8 border-r border-white/10 bg-slate-950/10 transition-all ${
             compactView ? "group relative" : ""
           }`}
         >
@@ -359,7 +393,7 @@ const StrategyCard: React.FC<Props> = ({
 
         {/* Fail Column */}
         <div
-          className={`p-8 bg-slate-900/30 transition-all ${
+          className={`p-8 bg-slate-950/10 transition-all ${
             compactView ? "group relative" : ""
           }`}
         >
