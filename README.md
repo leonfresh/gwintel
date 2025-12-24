@@ -24,10 +24,8 @@ View your app in AI Studio: https://ai.studio/apps/drive/1inRyttZ_4ZqOx_z976amoj
 
 ## Supabase Login
 
-- Visit `/login` to sign in via Supabase Auth.
+- Visit `/login` to sign in via Supabase Auth (magic link).
 
 ## Posting & Voting
 
-- Adding new posts or voting requires:
-  - being signed in, and
-  - verifying your email (Supabase email confirmation).
+- Adding new posts or voting requires being signed in.

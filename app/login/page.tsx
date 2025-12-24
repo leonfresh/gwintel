@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "../../lib/supabase/browserClient";
 
 export default function LoginPage() {
-  const supabase = getSupabaseBrowserClient();
+  const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
@@ -18,6 +17,7 @@ export default function LoginPage() {
       );
       return;
     }
+
     let mounted = true;
 
     supabase.auth.getSession().then(({ data }) => {
@@ -33,22 +33,27 @@ export default function LoginPage() {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
-  const signIn = async () => {
+  const sendMagicLink = async () => {
     if (!supabase) return;
     setLoading(true);
     setStatus("");
-    const { error } = await supabase.auth.signInWithPassword({
+
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
+      options: {
+        emailRedirectTo: redirectTo,
+      },
     });
+
     setLoading(false);
     if (error) {
       setStatus(error.message);
       return;
     }
-    setStatus("Signed in.");
+    setStatus("Magic link sent. Check your email.");
   };
 
   const signOut = async () => {
@@ -96,25 +101,16 @@ export default function LoginPage() {
             />
           </label>
 
-          <label className="block">
-            <span className="text-slate-300 text-sm font-semibold">
-              Password
-            </span>
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white"
-              type="password"
-              autoComplete="current-password"
-            />
-          </label>
+          <p className="text-sm text-white/70">
+            We’ll email you a magic link to sign in.
+          </p>
 
           <button
-            onClick={signIn}
-            disabled={loading || !email || !password}
+            onClick={sendMagicLink}
+            disabled={loading || !email}
             className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-black rounded-xl"
           >
-            Sign in
+            Send magic link
           </button>
         </div>
       )}
@@ -122,7 +118,8 @@ export default function LoginPage() {
       {status ? <p className="mt-6 text-slate-300">{status}</p> : null}
 
       <p className="mt-10 text-slate-500 text-sm">
-        Note: you must create a user in Supabase Auth (Email/Password) first.
+        If you don’t receive emails, check Supabase Auth URL settings (Site URL
+        + redirect allowlist) and email delivery.
       </p>
     </div>
   );

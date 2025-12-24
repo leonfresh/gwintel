@@ -32,14 +32,6 @@ function toStrategyLog(row: DbStrategyLogRow): StrategyLog {
   };
 }
 
-function isEmailVerified(user: unknown): boolean {
-  const u = user as {
-    email_confirmed_at?: string | null;
-    confirmed_at?: string | null;
-  } | null;
-  return Boolean(u?.email_confirmed_at || u?.confirmed_at);
-}
-
 interface AddLogState {
   enemyIds?: string[];
   type?: LogType;
@@ -56,7 +48,6 @@ const App: React.FC = () => {
   >("generic");
   const [loading, setLoading] = useState(true);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
-  const [authVerified, setAuthVerified] = useState(false);
   const [supabaseReady, setSupabaseReady] = useState(true);
 
   useEffect(() => {
@@ -81,7 +72,6 @@ const App: React.FC = () => {
       const sessionUser = sessionData.session?.user ?? null;
       const user = userData.user ?? sessionUser;
       setAuthEmail(user?.email ?? null);
-      setAuthVerified(isEmailVerified(user));
 
       const { data, error } = await client
         .from("strategy_logs")
@@ -104,7 +94,6 @@ const App: React.FC = () => {
       async (_event, session) => {
         const user = session?.user ?? null;
         setAuthEmail(user?.email ?? null);
-        setAuthVerified(isEmailVerified(user));
       }
     );
 
@@ -114,13 +103,8 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const ensureVerified = (reason: "post" | "vote") => {
+  const ensureSignedIn = (reason: "post" | "vote") => {
     if (!authEmail) {
-      setAuthModalReason(reason);
-      setAuthModalOpen(true);
-      return false;
-    }
-    if (!authVerified) {
       setAuthModalReason(reason);
       setAuthModalOpen(true);
       return false;
@@ -131,14 +115,14 @@ const App: React.FC = () => {
   const handleCreateLog = async (
     data: Pick<StrategyLog, "enemyTeam" | "counterTeam" | "type" | "notes">
   ) => {
-    if (!ensureVerified("post")) return;
+    if (!ensureSignedIn("post")) return;
 
     const client = getSupabaseBrowserClient();
     if (!client) return;
 
     const { data: userData } = await client.auth.getUser();
     const user = userData.user;
-    if (!user || !isEmailVerified(user)) {
+    if (!user) {
       setAuthModalReason("post");
       setAuthModalOpen(true);
       return;
@@ -178,14 +162,14 @@ const App: React.FC = () => {
   };
 
   const handleVote = async (id: string, type: "up" | "down") => {
-    if (!ensureVerified("vote")) return;
+    if (!ensureSignedIn("vote")) return;
 
     const client = getSupabaseBrowserClient();
     if (!client) return;
 
     const { data: userData } = await client.auth.getUser();
     const user = userData.user;
-    if (!user || !isEmailVerified(user)) {
+    if (!user) {
       setAuthModalReason("vote");
       setAuthModalOpen(true);
       return;
@@ -252,7 +236,7 @@ const App: React.FC = () => {
   };
 
   const openAddLog = (enemyIds?: string[], type?: LogType) => {
-    if (!ensureVerified("post")) return;
+    if (!ensureSignedIn("post")) return;
     setAddState({ enemyIds, type });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -287,7 +271,6 @@ const App: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 py-8 md:py-16">
       <AuthModal
         open={authModalOpen}
-        initialTab="login"
         reason={authModalReason}
         onClose={() => setAuthModalOpen(false)}
       />
