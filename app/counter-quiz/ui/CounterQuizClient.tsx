@@ -129,6 +129,7 @@ export default function CounterQuizClient() {
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadDebug, setLoadDebug] = useState<string | null>(null);
   const [seeds, setSeeds] = useState<QuestionSeed[]>([]);
   const [allCounterTeams, setAllCounterTeams] = useState<string[][]>([]);
 
@@ -300,6 +301,7 @@ export default function CounterQuizClient() {
     const load = async () => {
       setLoading(true);
       setLoadError(null);
+      setLoadDebug(null);
 
       let timedOut = false;
       const timeout = window.setTimeout(() => {
@@ -328,7 +330,11 @@ export default function CounterQuizClient() {
 
       if (error) {
         console.error("Failed to load strategy_logs", error);
-        setLoadError("Failed to load data from Supabase.");
+        setLoadError(
+          `Failed to load data from Supabase. (${
+            error.message || "unknown error"
+          })`
+        );
         setSeeds([]);
         setAllCounterTeams([]);
         setLoading(false);
@@ -371,17 +377,38 @@ export default function CounterQuizClient() {
 
       const counterPool: string[][] = [];
 
-      for (const r of rows) {
-        const votes = typeof r.votes === "number" ? r.votes : 0;
-        if (votes < 0) continue;
+      let rawRows = 0;
+      let skippedNegative = 0;
+      let skippedEmptyTeams = 0;
+      let skippedUnknownHeroes = 0;
 
-        const enemy = normalizeTeam(
-          Array.isArray(r.enemy_team) ? r.enemy_team : []
+      for (const r of rows) {
+        rawRows += 1;
+        const votes = typeof r.votes === "number" ? r.votes : 0;
+        if (votes < 0) {
+          skippedNegative += 1;
+          continue;
+        }
+
+        const rawEnemy = Array.isArray(r.enemy_team) ? r.enemy_team : [];
+        const rawCounter = Array.isArray(r.counter_team) ? r.counter_team : [];
+
+        const unknownInEnemy = rawEnemy.some(
+          (id) => typeof id === "string" && !heroesById.has(id)
         );
-        const counter = normalizeTeam(
-          Array.isArray(r.counter_team) ? r.counter_team : []
+        const unknownInCounter = rawCounter.some(
+          (id) => typeof id === "string" && !heroesById.has(id)
         );
-        if (enemy.length === 0 || counter.length === 0) continue;
+        if (unknownInEnemy || unknownInCounter) {
+          skippedUnknownHeroes += 1;
+        }
+
+        const enemy = normalizeTeam(rawEnemy);
+        const counter = normalizeTeam(rawCounter);
+        if (enemy.length === 0 || counter.length === 0) {
+          skippedEmptyTeams += 1;
+          continue;
+        }
 
         const w = votes > 0 ? votes : 1;
         const eKey = teamKey(enemy);
@@ -423,6 +450,16 @@ export default function CounterQuizClient() {
         });
       }
 
+      setLoadDebug(
+        `Loaded ${rawRows} success logs (votes>=0). Built ${builtSeeds.length} enemy questions from ${enemyToCounters.size} unique enemy teams. Skipped: ${skippedNegative} downvoted, ${skippedEmptyTeams} empty/invalid teams, ${skippedUnknownHeroes} logs containing unknown hero IDs.`
+      );
+
+      if (builtSeeds.length === 0) {
+        setLoadError(
+          "No quiz questions could be generated from the current data. This usually means the saved hero IDs don’t match the current HERO_DATABASE, or teams were empty/invalid. Sign-in is NOT required to load quiz data."
+        );
+      }
+
       setSeeds(builtSeeds);
       setAllCounterTeams(uniqueCounterPool);
       setLoading(false);
@@ -432,7 +469,7 @@ export default function CounterQuizClient() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, normalizeTeam]);
+  }, [supabase, normalizeTeam, heroesById]);
 
   const buildQuestion = (seed: QuestionSeed): Question => {
     const correctKey = teamKey(seed.correctCounterTeam);
@@ -984,10 +1021,20 @@ export default function CounterQuizClient() {
                               ) : loadError ? (
                                 <div className="text-slate-300 font-bold">
                                   {loadError}
+                                  {loadDebug ? (
+                                    <div className="mt-3 text-xs text-slate-400 font-bold">
+                                      {loadDebug}
+                                    </div>
+                                  ) : null}
                                 </div>
                               ) : !question ? (
                                 <div className="text-slate-300 font-bold">
                                   Not enough data yet.
+                                  {loadDebug ? (
+                                    <div className="mt-3 text-xs text-slate-400 font-bold">
+                                      {loadDebug}
+                                    </div>
+                                  ) : null}
                                 </div>
                               ) : (
                                 <>
