@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StrategyLog, LogType } from "../types";
+import { StrategyLog, LogType, SkillQueueItem } from "../types";
 import { HERO_DATABASE } from "../constants";
 
 interface Props {
@@ -263,6 +263,57 @@ const StrategyCard: React.FC<Props> = ({
   const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => {
     const isOwnPost = Boolean(currentUserId && log.authorId === currentUserId);
 
+    const SkillQueueRow: React.FC<{ queue: SkillQueueItem[] }> = ({
+      queue,
+    }) => {
+      if (!queue || queue.length === 0) return null;
+
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+            Skill Queue
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {queue.slice(0, 3).map((s, idx) => {
+              const hero = getHero(s.heroId);
+              const badge = s.skill === "top" ? "T" : "B";
+              return (
+                <div
+                  key={`${s.heroId}-${idx}`}
+                  className="flex items-center gap-2"
+                >
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-xl border border-white/10 bg-slate-950/20 glass text-slate-200 text-xs font-black">
+                    <span className="w-5 h-5 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center text-[10px]">
+                      {hero ? (
+                        <img
+                          src={`/heroes/${hero.id}.png`}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>?</span>
+                      )}
+                    </span>
+                    <span className="text-slate-300">
+                      {hero ? hero.name : "Unknown"}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded-lg bg-blue-500/15 border border-blue-500/20 text-blue-200 text-[10px] font-black">
+                      {badge}
+                    </span>
+                  </span>
+                  {idx < Math.min(queue.length, 3) - 1 ? (
+                    <span className="text-slate-600 text-xs font-black">
+                      &gt;
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
     return (
       <div className="p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all hover:bg-slate-900/75 shadow-sm hover:shadow-xl">
         <div className="flex justify-between items-start gap-6">
@@ -276,6 +327,8 @@ const StrategyCard: React.FC<Props> = ({
                 />
               ))}
             </div>
+
+            <SkillQueueRow queue={log.skillQueue || []} />
             <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
               “{log.notes || "No specific tactics recorded."}”
             </p>

@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from "react";
-import { Hero, StrategyLog, LogType } from "../types";
+import {
+  Hero,
+  StrategyLog,
+  LogType,
+  SkillQueueItem,
+  SkillChoice,
+} from "../types";
 import HeroAutocomplete from "./HeroAutocomplete";
 import { HERO_DATABASE } from "../constants";
 
 interface Props {
   onSubmit: (
-    log: Pick<StrategyLog, "enemyTeam" | "counterTeam" | "type" | "notes">
+    log: Pick<
+      StrategyLog,
+      "enemyTeam" | "counterTeam" | "type" | "notes" | "skillQueue"
+    >
   ) => void;
   onCancel: () => void;
   initialEnemyTeam?: string[];
   initialType?: LogType;
   initialCounterTeam?: string[];
   initialNotes?: string;
+  initialSkillQueue?: SkillQueueItem[];
 }
 
 const StrategyForm: React.FC<Props> = ({
@@ -21,12 +31,14 @@ const StrategyForm: React.FC<Props> = ({
   initialType,
   initialCounterTeam,
   initialNotes,
+  initialSkillQueue,
 }) => {
   const [enemyTeam, setEnemyTeam] = useState<Hero[]>([]);
   const [counterTeam, setCounterTeam] = useState<Hero[]>([]);
   const [type, setType] = useState<LogType>(initialType || "success");
   const [notes, setNotes] = useState("");
   const [formError, setFormError] = useState<string>("");
+  const [skillQueue, setSkillQueue] = useState<SkillQueueItem[]>([]);
 
   useEffect(() => {
     if (initialEnemyTeam) {
@@ -53,6 +65,16 @@ const StrategyForm: React.FC<Props> = ({
   useEffect(() => {
     if (typeof initialNotes === "string") setNotes(initialNotes);
   }, [initialNotes]);
+
+  useEffect(() => {
+    if (Array.isArray(initialSkillQueue)) setSkillQueue(initialSkillQueue);
+  }, [initialSkillQueue]);
+
+  useEffect(() => {
+    // Keep queue valid when counter team changes
+    const allowed = new Set(counterTeam.map((h) => h.id));
+    setSkillQueue((prev) => prev.filter((x) => allowed.has(x.heroId)));
+  }, [counterTeam]);
 
   const handleAddEnemy = (hero: Hero) => {
     if (enemyTeam.length < 3 && !enemyTeam.find((h) => h.id === hero.id)) {
@@ -86,7 +108,25 @@ const StrategyForm: React.FC<Props> = ({
       counterTeam: counterTeam.map((h) => h.id),
       type,
       notes,
+      skillQueue,
     });
+  };
+
+  const addSkillSlot = () => {
+    if (skillQueue.length >= 3) return;
+    if (counterTeam.length === 0) return;
+    const defaultHeroId = counterTeam[0].id;
+    setSkillQueue((prev) => [...prev, { heroId: defaultHeroId, skill: "top" }]);
+  };
+
+  const updateSkillSlot = (idx: number, patch: Partial<SkillQueueItem>) => {
+    setSkillQueue((prev) =>
+      prev.map((s, i) => (i === idx ? { ...s, ...patch } : s))
+    );
+  };
+
+  const removeSkillSlot = (idx: number) => {
+    setSkillQueue((prev) => prev.filter((_, i) => i !== idx));
   };
 
   return (
@@ -223,6 +263,95 @@ const StrategyForm: React.FC<Props> = ({
                 </button>
               </span>
             ))}
+          </div>
+
+          {/* Skill Queue */}
+          <div className="pt-2">
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.2em]">
+                Skill Queue (Optional)
+              </label>
+              <button
+                type="button"
+                onClick={addSkillSlot}
+                disabled={counterTeam.length === 0 || skillQueue.length >= 3}
+                className="px-3 py-1.5 bg-slate-900/35 glass hover:bg-slate-900/55 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 rounded-xl text-[10px] font-black transition-all border border-white/10"
+              >
+                + ADD SKILL
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {skillQueue.length === 0 ? (
+                <div className="p-4 rounded-2xl border border-white/10 bg-slate-900/20 glass text-slate-500 text-xs font-bold">
+                  Queue up to 3 skills (Top/Bottom) for your offense team.
+                </div>
+              ) : null}
+
+              {skillQueue.map((slot, idx) => (
+                <div
+                  key={`${slot.heroId}-${idx}`}
+                  className="p-4 rounded-2xl border border-white/10 bg-slate-900/35 glass flex flex-col sm:flex-row sm:items-center gap-3"
+                >
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 w-16">
+                    #{idx + 1}
+                  </div>
+
+                  <select
+                    value={slot.heroId}
+                    onChange={(e) =>
+                      updateSkillSlot(idx, { heroId: e.target.value })
+                    }
+                    className="flex-1 px-4 py-2 bg-slate-900/35 glass border border-white/10 rounded-xl text-sm font-bold text-white focus:ring-2 focus:ring-blue-500"
+                  >
+                    {counterTeam.map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-700 shadow-inner">
+                    {(["top", "bottom"] as SkillChoice[]).map((choice) => (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => updateSkillSlot(idx, { skill: choice })}
+                        className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all uppercase ${
+                          slot.skill === choice
+                            ? "bg-blue-600 text-white shadow-lg"
+                            : "text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        {choice === "top" ? "TOP" : "BOTTOM"}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => removeSkillSlot(idx)}
+                    className="p-2 rounded-xl hover:bg-white/10 text-slate-400 hover:text-rose-300 transition-colors"
+                    aria-label="Remove skill"
+                    title="Remove"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import type { ToastTone } from "./ToastStack";
 
 export default function MessageModal({
@@ -7,6 +7,7 @@ export default function MessageModal({
   message,
   tone = "info",
   primaryLabel = "OK",
+  autoCloseMs,
   onClose,
 }: {
   open: boolean;
@@ -14,8 +15,16 @@ export default function MessageModal({
   message: string;
   tone?: ToastTone;
   primaryLabel?: string;
+  autoCloseMs?: number;
   onClose: () => void;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    if (typeof autoCloseMs !== "number") return;
+    const t = window.setTimeout(() => onClose(), autoCloseMs);
+    return () => window.clearTimeout(t);
+  }, [open, autoCloseMs, onClose]);
+
   if (!open) return null;
 
   const accent =

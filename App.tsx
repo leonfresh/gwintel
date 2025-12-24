@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { StrategyLog, LogType, Hero } from "./types";
+import { StrategyLog, LogType, Hero, SkillQueueItem } from "./types";
 import StrategyForm from "./components/StrategyForm";
 import StrategyCard from "./components/StrategyCard";
 import HeroAutocomplete from "./components/HeroAutocomplete";
@@ -16,6 +16,7 @@ type DbStrategyLogRow = {
   id: string;
   enemy_team: string[];
   counter_team: string[];
+  skill_queue: unknown | null;
   type: LogType;
   notes: string;
   votes: number;
@@ -26,12 +27,26 @@ type DbStrategyLogRow = {
 };
 
 function toStrategyLog(row: DbStrategyLogRow): StrategyLog {
+  const queueRaw = row.skill_queue;
+  const skillQueue: SkillQueueItem[] = Array.isArray(queueRaw)
+    ? ((queueRaw as unknown[])
+        .map((x) => {
+          const obj = x as { heroId?: unknown; skill?: unknown };
+          const heroId = typeof obj.heroId === "string" ? obj.heroId : null;
+          const skill =
+            obj.skill === "top" || obj.skill === "bottom" ? obj.skill : null;
+          return heroId && skill ? { heroId, skill } : null;
+        })
+        .filter(Boolean) as SkillQueueItem[])
+    : [];
+
   return {
     id: row.id,
     enemyTeam: row.enemy_team,
     counterTeam: row.counter_team,
     type: row.type,
     notes: row.notes,
+    skillQueue,
     votes: row.votes,
     authorId: row.author_id,
     author: row.author_name || row.author_email || "Unknown",
@@ -45,6 +60,7 @@ interface AddLogState {
   editLogId?: string;
   counterIds?: string[];
   notes?: string;
+  skillQueue?: SkillQueueItem[];
 }
 
 const App: React.FC = () => {
@@ -110,6 +126,8 @@ const App: React.FC = () => {
   const [minVotes, setMinVotes] = useState<number>(0);
   const [squadVotes, setSquadVotes] = useState<Record<string, number>>({});
   const [compactView, setCompactView] = useState<boolean>(false);
+  const [cardView, setCardView] = useState<boolean>(false);
+  const [expandedSquadKey, setExpandedSquadKey] = useState<string | null>(null);
 
   useEffect(() => {
     const client = getSupabaseBrowserClient();
@@ -217,7 +235,10 @@ const App: React.FC = () => {
   };
 
   const handleCreateLog = async (
-    data: Pick<StrategyLog, "enemyTeam" | "counterTeam" | "type" | "notes">
+    data: Pick<
+      StrategyLog,
+      "enemyTeam" | "counterTeam" | "type" | "notes" | "skillQueue"
+    >
   ) => {
     if (!ensureSignedIn("post")) return;
 
@@ -286,6 +307,7 @@ const App: React.FC = () => {
         .from("strategy_logs")
         .update({
           counter_team: data.counterTeam,
+          skill_queue: data.skillQueue,
           type: data.type,
           notes: data.notes,
           // Keep author_name in sync if the user set/changed it
@@ -330,6 +352,7 @@ const App: React.FC = () => {
         .insert({
           enemy_team: data.enemyTeam,
           counter_team: data.counterTeam,
+          skill_queue: data.skillQueue,
           type: data.type,
           notes: data.notes,
           author_id: user.id,
@@ -340,21 +363,26 @@ const App: React.FC = () => {
         .single();
 
       if (error) {
-        pushToast({ tone: "error", title: "Could not post", message: error.message });
+        pushToast({
+          tone: "error",
+          title: "Could not post",
+          message: error.message,
+        });
         return;
       }
 
       const newLog = toStrategyLog(inserted as DbStrategyLogRow);
       setLogs((prev) => [newLog, ...prev]);
 
-      pushToast({
-        tone: "success",
+      setMessageModal({
+        open: true,
         title: "Thanks for posting!",
         message: isNewSquadReport
           ? "Squad report added to the database."
           : data.type === "success"
           ? "Counter strategy added."
           : "Fail report added.",
+        tone: "success",
       });
     }
     setShowForm(false);
@@ -385,7 +413,11 @@ const App: React.FC = () => {
       .maybeSingle();
 
     if (existingError) {
-      pushToast({ tone: "error", title: "Vote failed", message: existingError.message });
+      pushToast({
+        tone: "error",
+        title: "Vote failed",
+        message: existingError.message,
+      });
       return;
     }
 
@@ -398,7 +430,11 @@ const App: React.FC = () => {
         .eq("log_id", id)
         .eq("user_id", user.id);
       if (error) {
-        pushToast({ tone: "error", title: "Vote failed", message: error.message });
+        pushToast({
+          tone: "error",
+          title: "Vote failed",
+          message: error.message,
+        });
         return;
       }
     } else {
@@ -409,7 +445,11 @@ const App: React.FC = () => {
           { onConflict: "log_id,user_id" }
         );
       if (error) {
-        pushToast({ tone: "error", title: "Vote failed", message: error.message });
+        pushToast({
+          tone: "error",
+          title: "Vote failed",
+          message: error.message,
+        });
         return;
       }
     }
@@ -422,7 +462,11 @@ const App: React.FC = () => {
       .maybeSingle();
 
     if (updatedError) {
-      pushToast({ tone: "error", title: "Vote sync failed", message: updatedError.message });
+      pushToast({
+        tone: "error",
+        title: "Vote sync failed",
+        message: updatedError.message,
+      });
       return;
     }
 
@@ -468,7 +512,11 @@ const App: React.FC = () => {
       .maybeSingle();
 
     if (existingError) {
-      pushToast({ tone: "error", title: "Vote failed", message: existingError.message });
+      pushToast({
+        tone: "error",
+        title: "Vote failed",
+        message: existingError.message,
+      });
       return;
     }
 
@@ -482,7 +530,11 @@ const App: React.FC = () => {
         .eq("squad_key", squadKey)
         .eq("user_id", user.id);
       if (error) {
-        pushToast({ tone: "error", title: "Vote failed", message: error.message });
+        pushToast({
+          tone: "error",
+          title: "Vote failed",
+          message: error.message,
+        });
         return;
       }
     } else {
@@ -494,7 +546,11 @@ const App: React.FC = () => {
           { onConflict: "squad_key,user_id" }
         );
       if (error) {
-        pushToast({ tone: "error", title: "Vote failed", message: error.message });
+        pushToast({
+          tone: "error",
+          title: "Vote failed",
+          message: error.message,
+        });
         return;
       }
     }
@@ -506,7 +562,11 @@ const App: React.FC = () => {
       .eq("squad_key", squadKey);
 
     if (votesError) {
-      pushToast({ tone: "error", title: "Vote sync failed", message: votesError.message });
+      pushToast({
+        tone: "error",
+        title: "Vote sync failed",
+        message: votesError.message,
+      });
       return;
     }
 
@@ -545,12 +605,20 @@ const App: React.FC = () => {
       .eq("author_id", user.id);
 
     if (error) {
-      pushToast({ tone: "error", title: "Delete failed", message: error.message });
+      pushToast({
+        tone: "error",
+        title: "Delete failed",
+        message: error.message,
+      });
       return;
     }
 
     setLogs((prev) => prev.filter((l) => l.id !== id));
-    pushToast({ tone: "info", title: "Deleted", message: "Your post has been removed." });
+    pushToast({
+      tone: "info",
+      title: "Deleted",
+      message: "Your post has been removed.",
+    });
   };
 
   const openEditLog = (log: StrategyLog) => {
@@ -561,6 +629,7 @@ const App: React.FC = () => {
       editLogId: log.id,
       counterIds: log.counterTeam,
       notes: log.notes,
+      skillQueue: log.skillQueue,
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -568,7 +637,7 @@ const App: React.FC = () => {
 
   const openAddLog = (enemyIds?: string[], type?: LogType) => {
     if (!ensureSignedIn("post")) return;
-    setAddState({ enemyIds, type });
+    setAddState({ enemyIds, type, skillQueue: [] });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -964,6 +1033,7 @@ const App: React.FC = () => {
           title={messageModal?.title || ""}
           message={messageModal?.message || ""}
           tone={messageModal?.tone}
+          autoCloseMs={messageModal?.tone === "success" ? 1800 : undefined}
           onClose={() => setMessageModal(null)}
         />
 
@@ -1071,6 +1141,7 @@ const App: React.FC = () => {
               initialType={addState.type}
               initialCounterTeam={addState.counterIds}
               initialNotes={addState.notes}
+              initialSkillQueue={addState.skillQueue}
             />
           )}
 
@@ -1262,40 +1333,165 @@ const App: React.FC = () => {
                     </svg>
                   </button>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    Card View:
+                  </label>
+                  <button
+                    onClick={() => {
+                      const next = !cardView;
+                      setCardView(next);
+                      if (!next) setExpandedSquadKey(null);
+                    }}
+                    className={`p-2 rounded-lg border transition-all ${
+                      cardView
+                        ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
+                        : "bg-slate-900/35 glass border-white/10 text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="Toggle card grid view"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M4 6h7v7H4V6zm9 0h7v7h-7V6zM4 15h7v5H4v-5zm9 0h7v5h-7v-5z"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           {activeTab === "reports" ? (
-            <div className="space-y-12">
+            <div className={cardView ? "" : "space-y-12"}>
               {groupedLogs.length > 0 ? (
-                groupedLogs.map(([key, logs]) => {
-                  // Find the first (oldest) log for this squad to get the creator
-                  const firstLog = logs.reduce((oldest, log) =>
-                    log.createdAt < oldest.createdAt ? log : oldest
-                  );
-                  return (
-                    <div
-                      key={key}
-                      id={`squad-${key}`}
-                      className="transition-all duration-300"
-                    >
-                      <StrategyCard
-                        enemyIds={key.split(",")}
-                        logs={logs}
-                        squadVotes={squadVotes[key] || 0}
-                        squadCreator={firstLog.author}
-                        compactView={compactView}
-                        currentUserId={authUserId}
-                        onVote={handleVote}
-                        onSquadVote={(type) => handleSquadVote(key, type)}
-                        onAddLog={openAddLog}
-                        onDeleteLog={handleDeleteLog}
-                        onEditLog={openEditLog}
-                      />
-                    </div>
-                  );
-                })
+                cardView ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {groupedLogs.map(([key, logs]) => {
+                      // Find the first (oldest) log for this squad to get the creator
+                      const firstLog = logs.reduce((oldest, log) =>
+                        log.createdAt < oldest.createdAt ? log : oldest
+                      );
+
+                      const isExpanded = expandedSquadKey === key;
+                      const enemyIds = key.split(",");
+
+                      if (isExpanded) {
+                        return (
+                          <div
+                            key={key}
+                            id={`squad-${key}`}
+                            className="col-span-full"
+                          >
+                            <div className="flex justify-end mb-3">
+                              <button
+                                onClick={() => setExpandedSquadKey(null)}
+                                className="px-4 py-2 bg-slate-900/40 glass hover:bg-slate-900/55 text-slate-200 rounded-xl text-xs font-black transition-all border border-white/10"
+                                title="Collapse"
+                              >
+                                CLOSE
+                              </button>
+                            </div>
+                            <StrategyCard
+                              enemyIds={enemyIds}
+                              logs={logs}
+                              squadVotes={squadVotes[key] || 0}
+                              squadCreator={firstLog.author}
+                              compactView={false}
+                              currentUserId={authUserId}
+                              onVote={handleVote}
+                              onSquadVote={(type) => handleSquadVote(key, type)}
+                              onAddLog={openAddLog}
+                              onDeleteLog={handleDeleteLog}
+                              onEditLog={openEditLog}
+                            />
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <button
+                          key={key}
+                          id={`squad-${key}`}
+                          onClick={() => {
+                            setExpandedSquadKey(key);
+                            window.setTimeout(() => {
+                              const el = document.getElementById(
+                                `squad-${key}`
+                              );
+                              if (el)
+                                el.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "start",
+                                });
+                            }, 50);
+                          }}
+                          className="text-left bg-slate-900/60 glass rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl hover:border-white/20 transition-colors p-5"
+                          title="Open squad"
+                        >
+                          <div className="flex items-center justify-center gap-3">
+                            {enemyIds.slice(0, 3).map((id) => {
+                              const hero = getHero(id);
+                              return (
+                                <div
+                                  key={id}
+                                  className="w-14 h-14 rounded-full bg-slate-950/25 glass border-2 border-white/10 overflow-hidden flex items-center justify-center"
+                                >
+                                  {hero ? (
+                                    <img
+                                      src={`/heroes/${id}.png`}
+                                      alt={hero.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-xs font-black text-slate-200">
+                                      ?
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  groupedLogs.map(([key, logs]) => {
+                    const firstLog = logs.reduce((oldest, log) =>
+                      log.createdAt < oldest.createdAt ? log : oldest
+                    );
+                    return (
+                      <div
+                        key={key}
+                        id={`squad-${key}`}
+                        className="transition-all duration-300"
+                      >
+                        <StrategyCard
+                          enemyIds={key.split(",")}
+                          logs={logs}
+                          squadVotes={squadVotes[key] || 0}
+                          squadCreator={firstLog.author}
+                          compactView={compactView}
+                          currentUserId={authUserId}
+                          onVote={handleVote}
+                          onSquadVote={(type) => handleSquadVote(key, type)}
+                          onAddLog={openAddLog}
+                          onDeleteLog={handleDeleteLog}
+                          onEditLog={openEditLog}
+                        />
+                      </div>
+                    );
+                  })
+                )
               ) : (
                 <div className="col-span-full py-32 flex flex-col items-center justify-center text-slate-500 bg-slate-950/15 glass rounded-[3rem] border-2 border-dashed border-white/10">
                   <div className="w-24 h-24 bg-slate-900/35 glass rounded-full flex items-center justify-center mb-6 border border-white/10">

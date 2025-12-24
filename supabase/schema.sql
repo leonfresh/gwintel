@@ -7,6 +7,7 @@ create table if not exists public.strategy_logs (
   id uuid primary key default gen_random_uuid(),
   enemy_team text[] not null,
   counter_team text[] not null,
+  skill_queue jsonb not null default '[]'::jsonb,
   type text not null check (type in ('success', 'fail')),
   notes text not null default '',
   votes integer not null default 0,
@@ -15,6 +16,10 @@ create table if not exists public.strategy_logs (
   author_name text,
   created_at timestamptz not null default now()
 );
+
+-- If you created the table before skill_queue existed
+alter table public.strategy_logs
+  add column if not exists skill_queue jsonb not null default '[]'::jsonb;
 
 -- If you created the table before author_name existed
 alter table public.strategy_logs
