@@ -313,16 +313,6 @@ export default function TripleTriadClient() {
     setLastMove("New match! Pick a card, then place it on the board.");
   }, []);
 
-  const placeFor = useCallback((owner: Owner, card: Card, idx: number) => {
-    setBoard((prev) => {
-      if (prev[idx] !== null) return prev;
-      const draft = [...prev];
-      draft[idx] = { owner, card };
-      const resolved = resolveFlips(draft, idx);
-      return resolved.board;
-    });
-  }, []);
-
   const onPlace = useCallback(
     (idx: number) => {
       if (gameOver) return;
