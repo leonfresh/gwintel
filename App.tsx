@@ -6,6 +6,9 @@ import HeroAutocomplete from "./components/HeroAutocomplete";
 import HeroAvatar from "./components/HeroAvatar";
 import AuthModal from "./components/AuthModal";
 import UsernameSetupModal from "./components/UsernameSetupModal";
+import ToastStack, { ToastItem, ToastTone } from "./components/ToastStack";
+import MessageModal from "./components/MessageModal";
+import ConfirmModal from "./components/ConfirmModal";
 import { getSupabaseBrowserClient } from "./lib/supabase/browserClient";
 import { HERO_DATABASE } from "./constants";
 
@@ -59,6 +62,44 @@ const App: React.FC = () => {
   const [authDisplayName, setAuthDisplayName] = useState<string | null>(null);
   const [supabaseReady, setSupabaseReady] = useState(true);
   const [showUsernameSetup, setShowUsernameSetup] = useState(false);
+
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [messageModal, setMessageModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    tone?: ToastTone;
+  } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const pushToast = (t: {
+    tone: ToastTone;
+    title: string;
+    message?: string;
+    durationMs?: number;
+  }) => {
+    const id =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const toast: ToastItem = {
+      id,
+      tone: t.tone,
+      title: t.title,
+      message: t.message,
+    };
+
+    setToasts((prev) => [...prev, toast]);
+
+    const duration = typeof t.durationMs === "number" ? t.durationMs : 3200;
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((x) => x.id !== id));
+    }, duration);
+  };
 
   // New filter states
   const [activeTab, setActiveTab] = useState<"reports" | "stats">("reports");
@@ -187,6 +228,10 @@ const App: React.FC = () => {
     // When adding a counter/fail to an existing squad (enemyIds preselected), duplicates are allowed.
     const isNewSquadReport =
       !addState.enemyIds || addState.enemyIds.length === 0;
+    const editLogId =
+      typeof addState.editLogId === "string" && addState.editLogId.length > 0
+        ? addState.editLogId
+        : null;
     if (isNewSquadReport) {
       const squadKey = [...data.enemyTeam].sort().join(",");
       const existingSquad = groupedLogs.find(([key]) => key === squadKey);
@@ -209,9 +254,13 @@ const App: React.FC = () => {
           }
         }, 100);
 
-        alert(
-          "This enemy squad already exists! Scrolling to the existing report..."
-        );
+        setMessageModal({
+          open: true,
+          title: "Squad already exists",
+          message:
+            "This enemy squad already exists. Scrolled to the existing report.",
+          tone: "info",
+        });
         return;
       }
     }
@@ -232,7 +281,7 @@ const App: React.FC = () => {
         ? (anyUser.user_metadata.ingame_name as string)
         : null;
 
-    if (addState.editLogId) {
+    if (editLogId) {
       const { data: updated, error } = await client
         .from("strategy_logs")
         .update({
@@ -242,13 +291,27 @@ const App: React.FC = () => {
           // Keep author_name in sync if the user set/changed it
           author_name: authorName,
         })
-        .eq("id", addState.editLogId)
+        .eq("id", editLogId)
         .eq("author_id", user.id)
         .select("*")
-        .single();
+        .maybeSingle();
 
       if (error) {
-        alert(error.message);
+        pushToast({
+          tone: "error",
+          title: "Could not update post",
+          message: error.message,
+        });
+        return;
+      }
+
+      if (!updated) {
+        pushToast({
+          tone: "error",
+          title: "Could not update post",
+          message:
+            "No post was updated. It may have been deleted or you may not own it.",
+        });
         return;
       }
 
@@ -256,6 +319,11 @@ const App: React.FC = () => {
       setLogs((prev) =>
         prev.map((l) => (l.id === updatedLog.id ? updatedLog : l))
       );
+      pushToast({
+        tone: "success",
+        title: "Post updated",
+        message: "Your intel report has been updated.",
+      });
     } else {
       const { data: inserted, error } = await client
         .from("strategy_logs")
@@ -272,12 +340,22 @@ const App: React.FC = () => {
         .single();
 
       if (error) {
-        alert(error.message);
+        pushToast({ tone: "error", title: "Could not post", message: error.message });
         return;
       }
 
       const newLog = toStrategyLog(inserted as DbStrategyLogRow);
       setLogs((prev) => [newLog, ...prev]);
+
+      pushToast({
+        tone: "success",
+        title: "Thanks for posting!",
+        message: isNewSquadReport
+          ? "Squad report added to the database."
+          : data.type === "success"
+          ? "Counter strategy added."
+          : "Fail report added.",
+      });
     }
     setShowForm(false);
     setAddState({});
@@ -307,7 +385,7 @@ const App: React.FC = () => {
       .maybeSingle();
 
     if (existingError) {
-      alert(existingError.message);
+      pushToast({ tone: "error", title: "Vote failed", message: existingError.message });
       return;
     }
 
@@ -320,7 +398,7 @@ const App: React.FC = () => {
         .eq("log_id", id)
         .eq("user_id", user.id);
       if (error) {
-        alert(error.message);
+        pushToast({ tone: "error", title: "Vote failed", message: error.message });
         return;
       }
     } else {
@@ -331,7 +409,7 @@ const App: React.FC = () => {
           { onConflict: "log_id,user_id" }
         );
       if (error) {
-        alert(error.message);
+        pushToast({ tone: "error", title: "Vote failed", message: error.message });
         return;
       }
     }
@@ -341,10 +419,19 @@ const App: React.FC = () => {
       .from("strategy_logs")
       .select("id,votes")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (updatedError) {
-      alert(updatedError.message);
+      pushToast({ tone: "error", title: "Vote sync failed", message: updatedError.message });
+      return;
+    }
+
+    if (!updatedLog) {
+      pushToast({
+        tone: "error",
+        title: "Vote sync failed",
+        message: "Could not refresh vote total.",
+      });
       return;
     }
 
@@ -381,7 +468,7 @@ const App: React.FC = () => {
       .maybeSingle();
 
     if (existingError) {
-      alert(existingError.message);
+      pushToast({ tone: "error", title: "Vote failed", message: existingError.message });
       return;
     }
 
@@ -395,7 +482,7 @@ const App: React.FC = () => {
         .eq("squad_key", squadKey)
         .eq("user_id", user.id);
       if (error) {
-        alert(error.message);
+        pushToast({ tone: "error", title: "Vote failed", message: error.message });
         return;
       }
     } else {
@@ -407,7 +494,7 @@ const App: React.FC = () => {
           { onConflict: "squad_key,user_id" }
         );
       if (error) {
-        alert(error.message);
+        pushToast({ tone: "error", title: "Vote failed", message: error.message });
         return;
       }
     }
@@ -419,7 +506,7 @@ const App: React.FC = () => {
       .eq("squad_key", squadKey);
 
     if (votesError) {
-      alert(votesError.message);
+      pushToast({ tone: "error", title: "Vote sync failed", message: votesError.message });
       return;
     }
 
@@ -436,7 +523,10 @@ const App: React.FC = () => {
 
   const handleDeleteLog = async (id: string) => {
     if (!ensureSignedIn("post")) return;
+    setConfirmDeleteId(id);
+  };
 
+  const performDeleteLog = async (id: string) => {
     const client = getSupabaseBrowserClient();
     if (!client) return;
 
@@ -448,9 +538,6 @@ const App: React.FC = () => {
       return;
     }
 
-    const ok = window.confirm("Delete this post? This cannot be undone.");
-    if (!ok) return;
-
     const { error } = await client
       .from("strategy_logs")
       .delete()
@@ -458,11 +545,12 @@ const App: React.FC = () => {
       .eq("author_id", user.id);
 
     if (error) {
-      alert(error.message);
+      pushToast({ tone: "error", title: "Delete failed", message: error.message });
       return;
     }
 
     setLogs((prev) => prev.filter((l) => l.id !== id));
+    pushToast({ tone: "info", title: "Deleted", message: "Your post has been removed." });
   };
 
   const openEditLog = (log: StrategyLog) => {
@@ -867,6 +955,30 @@ const App: React.FC = () => {
           open={authModalOpen}
           reason={authModalReason}
           onClose={() => setAuthModalOpen(false)}
+        />
+
+        <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
+        <MessageModal
+          open={Boolean(messageModal?.open)}
+          title={messageModal?.title || ""}
+          message={messageModal?.message || ""}
+          tone={messageModal?.tone}
+          onClose={() => setMessageModal(null)}
+        />
+
+        <ConfirmModal
+          open={confirmDeleteId !== null}
+          title="Delete post"
+          message="Delete this post? This cannot be undone."
+          confirmLabel="Delete"
+          tone="danger"
+          onCancel={() => setConfirmDeleteId(null)}
+          onConfirm={async () => {
+            const id = confirmDeleteId;
+            setConfirmDeleteId(null);
+            if (id) await performDeleteLog(id);
+          }}
         />
 
         <UsernameSetupModal

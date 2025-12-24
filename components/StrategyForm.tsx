@@ -26,6 +26,7 @@ const StrategyForm: React.FC<Props> = ({
   const [counterTeam, setCounterTeam] = useState<Hero[]>([]);
   const [type, setType] = useState<LogType>(initialType || "success");
   const [notes, setNotes] = useState("");
+  const [formError, setFormError] = useState<string>("");
 
   useEffect(() => {
     if (initialEnemyTeam) {
@@ -76,9 +77,10 @@ const StrategyForm: React.FC<Props> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (enemyTeam.length < 1 || counterTeam.length < 1) {
-      alert("Please select both teams.");
+      setFormError("Please select at least 1 hero for both teams.");
       return;
     }
+    setFormError("");
     onSubmit({
       enemyTeam: enemyTeam.map((h) => h.id).sort(),
       counterTeam: counterTeam.map((h) => h.id),
@@ -242,6 +244,11 @@ const StrategyForm: React.FC<Props> = ({
           />
         </div>
         <div className="flex flex-col justify-end space-y-6">
+          {formError ? (
+            <div className="p-4 rounded-2xl border border-rose-500/25 bg-rose-500/10 text-rose-200 text-sm font-bold">
+              {formError}
+            </div>
+          ) : null}
           <div className="flex gap-4">
             <button
               type="submit"
