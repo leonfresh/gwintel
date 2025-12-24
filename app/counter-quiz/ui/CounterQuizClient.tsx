@@ -316,7 +316,7 @@ export default function CounterQuizClient() {
         .from("strategy_logs")
         .select("id, enemy_team, counter_team, type, votes, created_at")
         .eq("type", "success")
-        .gt("votes", 0)
+        .gte("votes", 0)
         // NOTE: avoid ORDER BY here; without an index this can be very slow.
         .limit(1200);
 
@@ -347,7 +347,7 @@ export default function CounterQuizClient() {
 
         if (typeof count === "number" && count > 0) {
           setLoadError(
-            `Found ${count} success reports, but none are eligible for the quiz yet. The quiz only uses counters with votes > 0 (downvoted/zero-vote entries are ignored). Upvote good counters to train the quiz.`
+            `Found ${count} success reports, but all of them are currently filtered out (likely downvoted). The quiz ignores counters with votes < 0.`
           );
         } else {
           setLoadError(
@@ -373,7 +373,7 @@ export default function CounterQuizClient() {
 
       for (const r of rows) {
         const votes = typeof r.votes === "number" ? r.votes : 0;
-        if (votes <= 0) continue;
+        if (votes < 0) continue;
 
         const enemy = normalizeTeam(
           Array.isArray(r.enemy_team) ? r.enemy_team : []
@@ -383,7 +383,7 @@ export default function CounterQuizClient() {
         );
         if (enemy.length === 0 || counter.length === 0) continue;
 
-        const w = votes;
+        const w = votes > 0 ? votes : 1;
         const eKey = teamKey(enemy);
         const cKey = teamKey(counter);
 

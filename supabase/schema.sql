@@ -21,7 +21,7 @@ create table if not exists public.strategy_logs (
 -- Supports quiz query patterns (type='success' AND votes>0).
 create index if not exists strategy_logs_success_votes_created_at_idx
   on public.strategy_logs (created_at desc)
-  where type = 'success' and votes > 0;
+  where type = 'success' and votes >= 0;
 
 create index if not exists strategy_logs_type_votes_idx
   on public.strategy_logs (type, votes);
