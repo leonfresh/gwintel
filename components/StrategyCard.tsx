@@ -401,10 +401,10 @@ const StrategyCard: React.FC<Props> = ({
                 </div>
               </div>
               {isOwnPost && (
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-3 mt-2">
                   <button
                     onClick={() => onEditLog(log)}
-                    className="text-slate-500 hover:text-blue-400 transition-all transform hover:scale-110 active:scale-95 text-xs"
+                    className="flex items-center gap-1 text-slate-500 hover:text-blue-400 transition-all transform hover:scale-105 active:scale-95 text-xs font-bold"
                     title="Edit your post"
                     aria-label="Edit your post"
                   >
@@ -427,10 +427,11 @@ const StrategyCard: React.FC<Props> = ({
                         d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
                       />
                     </svg>
+                    <span>Edit</span>
                   </button>
                   <button
                     onClick={() => onDeleteLog(log.id)}
-                    className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-110 active:scale-95 text-xs"
+                    className="flex items-center gap-1 text-slate-500 hover:text-rose-400 transition-all transform hover:scale-105 active:scale-95 text-xs font-bold"
                     title="Delete your post"
                     aria-label="Delete your post"
                   >
@@ -447,6 +448,7 @@ const StrategyCard: React.FC<Props> = ({
                         d="M6 18L18 6M6 6l12 12"
                       />
                     </svg>
+                    <span>Delete</span>
                   </button>
                 </div>
               )}
