@@ -271,10 +271,10 @@ const StrategyCard: React.FC<Props> = ({
 
   const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => {
     const isOwnPost = Boolean(currentUserId && log.authorId === currentUserId);
-    const cardTint =
+    const cardBg =
       log.type === "success"
-        ? "before:bg-emerald-500/16"
-        : "before:bg-rose-500/16";
+        ? "bg-emerald-950/35 hover:bg-emerald-950/40"
+        : "bg-rose-950/35 hover:bg-rose-950/40";
 
     const SkillQueueRow: React.FC<{ queue: SkillQueueItem[] }> = ({
       queue,
@@ -336,9 +336,9 @@ const StrategyCard: React.FC<Props> = ({
 
     return (
       <div
-        className={`relative overflow-hidden p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl before:content-[''] before:absolute before:inset-0 before:pointer-events-none before:opacity-60 hover:before:opacity-80 ${cardTint}`}
+        className={`relative overflow-hidden p-5 ${cardBg} glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl`}
       >
-        <div className="relative z-10 flex justify-between items-start gap-6">
+        <div className="flex justify-between items-start gap-6">
           <div className="flex items-start gap-5 flex-1">
             {/* Desktop: stacked hero icons */}
             <div className="hidden md:flex flex-col gap-2">
