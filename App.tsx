@@ -753,7 +753,7 @@ const App: React.FC = () => {
         <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-[0_10px_30px_rgba(37,99,235,0.4)] rotate-3">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-[0_10px_40px_rgba(59,130,246,0.6)] rotate-3 border border-blue-400/30">
                 <svg
                   className="w-8 h-8 text-white"
                   fill="none"
@@ -786,7 +786,7 @@ const App: React.FC = () => {
           {!showForm && (
             <button
               onClick={() => openAddLog()}
-              className="px-10 py-5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all shadow-2xl hover:scale-105 active:scale-95 flex items-center gap-3 uppercase tracking-widest text-sm italic"
+              className="px-10 py-5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-black rounded-2xl transition-all shadow-2xl hover:shadow-blue-500/50 hover:scale-105 active:scale-95 flex items-center gap-3 uppercase tracking-widest text-sm italic border border-blue-400/30"
             >
               <span>NEW SQUAD REPORT</span>
               <svg
@@ -808,7 +808,7 @@ const App: React.FC = () => {
 
         <main className="space-y-12">
           {loading ? (
-            <div className="p-10 rounded-3xl border border-slate-800 bg-slate-900/40 text-slate-400">
+            <div className="glass p-10 rounded-3xl text-slate-400 shadow-xl">
               Loading intelligence...
             </div>
           ) : null}
@@ -853,7 +853,7 @@ const App: React.FC = () => {
 
           {/* Improved Filter UI with Tags */}
           {activeTab === "reports" && (
-            <div className="bg-slate-800/60 p-6 rounded-[2rem] border-2 border-slate-700/50 space-y-4 shadow-xl backdrop-blur-md">
+            <div className="glass-light p-6 rounded-[2rem] space-y-4 shadow-xl">
               {/* Hero Tags Search */}
               <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
                 <div className="flex items-center gap-3 text-slate-400 whitespace-nowrap">
@@ -1115,7 +1115,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Most Reported Enemy Heroes */}
-              <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
+              <div className="glass-light p-8 rounded-[2rem] shadow-xl">
                 <h3 className="text-xl font-black text-rose-400 uppercase tracking-wider mb-6 flex items-center gap-3">
                   <svg
                     className="w-6 h-6"
@@ -1137,7 +1137,7 @@ const App: React.FC = () => {
                     hero ? (
                       <div
                         key={hero.id}
-                        className="bg-slate-900/40 p-4 rounded-xl border border-slate-700/50 text-center flex flex-col items-center gap-3"
+                        className="glass-light p-4 rounded-xl border border-slate-700/50 text-center flex flex-col items-center gap-3 hover:border-rose-400/40 transition-all"
                       >
                         <HeroAvatar hero={hero} size="lg" showTier />
                         <div>
@@ -1158,7 +1158,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Top Counter Heroes */}
-              <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
+              <div className="glass-light p-8 rounded-[2rem] shadow-xl">
                 <h3 className="text-xl font-black text-emerald-400 uppercase tracking-wider mb-6 flex items-center gap-3">
                   <svg
                     className="w-6 h-6"
@@ -1180,7 +1180,7 @@ const App: React.FC = () => {
                     hero ? (
                       <div
                         key={hero.id}
-                        className="bg-slate-900/40 p-4 rounded-xl border border-slate-700/50 text-center flex flex-col items-center gap-3"
+                        className="glass-light p-4 rounded-xl border border-slate-700/50 text-center flex flex-col items-center gap-3 hover:border-emerald-400/40 transition-all"
                       >
                         <HeroAvatar hero={hero} size="lg" showTier />
                         <div>
@@ -1201,7 +1201,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Top Heroes for Offense (with win rates) */}
-              <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
+              <div className="glass-light p-8 rounded-[2rem] shadow-xl">
                 <h3 className="text-xl font-black text-blue-400 uppercase tracking-wider mb-6 flex items-center gap-3">
                   <svg
                     className="w-6 h-6"
@@ -1224,7 +1224,7 @@ const App: React.FC = () => {
                       hero ? (
                         <div
                           key={hero.id}
-                          className="bg-slate-900/40 p-4 rounded-xl border border-blue-500/20 text-center flex flex-col items-center gap-3"
+                          className="glass-light p-4 rounded-xl border border-blue-500/20 text-center flex flex-col items-center gap-3 hover:border-blue-400/40 transition-all"
                         >
                           <HeroAvatar hero={hero} size="lg" showTier />
                           <div>
@@ -1265,7 +1265,7 @@ const App: React.FC = () => {
               </div>
 
               {/* Top Heroes for Defense (with defense rates) */}
-              <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
+              <div className="glass-light p-8 rounded-[2rem] shadow-xl">
                 <h3 className="text-xl font-black text-orange-400 uppercase tracking-wider mb-6 flex items-center gap-3">
                   <svg
                     className="w-6 h-6"
@@ -1288,7 +1288,7 @@ const App: React.FC = () => {
                       hero ? (
                         <div
                           key={hero.id}
-                          className="bg-slate-900/40 p-4 rounded-xl border border-orange-500/20 text-center flex flex-col items-center gap-3"
+                          className="glass-light p-4 rounded-xl border border-orange-500/20 text-center flex flex-col items-center gap-3 hover:border-orange-400/40 transition-all"
                         >
                           <HeroAvatar hero={hero} size="lg" showTier />
                           <div>
@@ -1330,7 +1330,7 @@ const App: React.FC = () => {
 
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Most Failed Enemy Teams */}
-                <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
+                <div className="glass-light p-8 rounded-[2rem] shadow-xl">
                   <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider mb-6">
                     💀 Most Failed Enemy Teams
                   </h3>
@@ -1338,7 +1338,7 @@ const App: React.FC = () => {
                     {stats.mostFailedTeams.map(({ enemyIds, count }, idx) => (
                       <div
                         key={idx}
-                        className="bg-slate-900/40 p-4 rounded-xl border border-rose-500/20 flex items-center justify-between"
+                        className="glass-light p-4 rounded-xl border border-rose-500/20 flex items-center justify-between hover:border-rose-400/40 transition-all"
                       >
                         <div className="flex flex-wrap gap-2">
                           {enemyIds.map((id) => {
@@ -1362,7 +1362,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Most Successful Counter Teams */}
-                <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
+                <div className="glass-light p-8 rounded-[2rem] shadow-xl">
                   <h3 className="text-lg font-black text-emerald-400 uppercase tracking-wider mb-6">
                     ✨ Most Successful Counter Teams
                   </h3>
@@ -1371,7 +1371,7 @@ const App: React.FC = () => {
                       ({ counterIds, count }, idx) => (
                         <div
                           key={idx}
-                          className="bg-slate-900/40 p-4 rounded-xl border border-emerald-500/20 flex items-center justify-between"
+                          className="glass-light p-4 rounded-xl border border-emerald-500/20 flex items-center justify-between hover:border-emerald-400/40 transition-all"
                         >
                           <div className="flex flex-wrap gap-2">
                             {counterIds.map((id) => {
@@ -1398,7 +1398,7 @@ const App: React.FC = () => {
 
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Highest Win Rate Squads */}
-                <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
+                <div className="glass-light p-8 rounded-[2rem] shadow-xl">
                   <h3 className="text-lg font-black text-emerald-400 uppercase tracking-wider mb-6">
                     🏆 Easiest Enemy Squads (3+ reports)
                   </h3>
@@ -1407,7 +1407,7 @@ const App: React.FC = () => {
                       ({ enemyIds, success, fail, winRate }, idx) => (
                         <div
                           key={idx}
-                          className="bg-slate-900/40 p-4 rounded-xl border border-emerald-500/20"
+                          className="glass-light p-4 rounded-xl border border-emerald-500/20 hover:border-emerald-400/40 transition-all"
                         >
                           <div className="flex flex-wrap gap-2 mb-2">
                             {enemyIds.map((id) => {
@@ -1437,7 +1437,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Lowest Win Rate Squads */}
-                <div className="bg-slate-800/60 p-8 rounded-[2rem] border-2 border-slate-700/50">
+                <div className="glass-light p-8 rounded-[2rem] shadow-xl">
                   <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider mb-6">
                     ⚠️ Hardest Enemy Squads (3+ reports)
                   </h3>
@@ -1446,7 +1446,7 @@ const App: React.FC = () => {
                       ({ enemyIds, success, fail, lossRate }, idx) => (
                         <div
                           key={idx}
-                          className="bg-slate-900/40 p-4 rounded-xl border border-rose-500/20"
+                          className="glass-light p-4 rounded-xl border border-rose-500/20 hover:border-rose-400/40 transition-all"
                         >
                           <div className="flex flex-wrap gap-2 mb-2">
                             {enemyIds.map((id) => {

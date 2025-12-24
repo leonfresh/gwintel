@@ -62,7 +62,7 @@ export default function UsernameSetupModal({ open, onComplete }: Props) {
     <div className="fixed inset-0 z-[200]">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
-      <div className="relative mx-auto mt-32 w-[min(480px,92vw)] rounded-3xl border-2 border-blue-500/30 bg-slate-900 shadow-2xl">
+      <div className="relative mx-auto mt-32 w-[min(480px,92vw)] rounded-3xl border-2 border-blue-500/30 glass shadow-2xl">
         <div className="p-8">
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">

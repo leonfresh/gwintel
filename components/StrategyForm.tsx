@@ -69,7 +69,7 @@ const StrategyForm: React.FC<Props> = ({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl space-y-8 animate-in fade-in zoom-in-95 duration-300"
+      className="glass p-8 rounded-2xl shadow-2xl space-y-8 animate-in fade-in zoom-in-95 duration-300"
     >
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-black text-white italic tracking-tight">
