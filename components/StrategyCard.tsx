@@ -84,10 +84,10 @@ const StrategyCard: React.FC<Props> = ({
 
     return (
       <span
-        className={`inline-flex items-center gap-2 text-xs font-black px-3 py-1 rounded-lg shadow-sm border ${palette}`}
+        className={`relative inline-flex items-center gap-2 text-xs font-black pl-7 pr-3 py-1 rounded-lg shadow-sm border ${palette}`}
       >
         <span
-          className={`w-4 h-4 rounded-full overflow-hidden border ${ring} bg-slate-950/25 glass flex items-center justify-center text-[9px] font-black text-slate-200`}
+          className={`absolute -left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full overflow-hidden border ${ring} bg-slate-950/60 glass flex items-center justify-center text-[10px] font-black text-slate-100 shadow-lg`}
           aria-hidden="true"
         >
           {imageOk ? (
@@ -107,7 +107,7 @@ const StrategyCard: React.FC<Props> = ({
   };
 
   const EnemySquadHeader: React.FC = () => (
-    <div className="bg-slate-950/20 glass px-8 py-6 border-b border-white/10 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+    <div className="bg-slate-950/60 glass px-8 py-6 border-b border-white/10 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
       {/* Background Decor */}
       <div
         className={`absolute -right-8 -top-8 w-32 h-32 blur-3xl opacity-20 bg-gradient-to-br ${getTierColor(
@@ -124,7 +124,7 @@ const StrategyCard: React.FC<Props> = ({
         >
           Squad Rating
         </div>
-        <div className="flex flex-col items-center gap-1 bg-slate-950/25 glass py-3 px-4 rounded-xl border border-white/10 shadow-lg">
+        <div className="flex flex-col items-center gap-1 bg-slate-950/60 glass py-3 px-4 rounded-xl border border-white/10 shadow-lg">
           <button
             onClick={() => onSquadVote("up")}
             className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
@@ -248,7 +248,7 @@ const StrategyCard: React.FC<Props> = ({
   );
 
   const LogEntry: React.FC<{ log: StrategyLog }> = ({ log }) => (
-    <div className="p-5 bg-slate-950/15 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all hover:bg-slate-950/25 shadow-sm hover:shadow-xl">
+    <div className="p-5 bg-slate-950/65 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all hover:bg-slate-950/70 shadow-sm hover:shadow-xl">
       <div className="flex justify-between items-start gap-6">
         <div className="flex-1 space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -273,7 +273,7 @@ const StrategyCard: React.FC<Props> = ({
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-950/20 glass py-2 rounded-xl border border-white/10">
+        <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-950/70 glass py-2 rounded-xl border border-white/10">
           <button
             onClick={() => onVote(log.id, "up")}
             className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
@@ -303,7 +303,7 @@ const StrategyCard: React.FC<Props> = ({
   );
 
   return (
-    <div className="bg-slate-950/15 glass rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">
+    <div className="bg-slate-950/60 glass rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">
       <EnemySquadHeader />
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
         {/* Effective Column */}

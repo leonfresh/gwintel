@@ -670,10 +670,10 @@ const App: React.FC = () => {
 
     return (
       <span
-        className={`inline-flex items-center gap-2 text-xs font-bold px-2.5 py-1 rounded-lg border ${palette}`}
+        className={`relative inline-flex items-center gap-2 text-xs font-bold pl-6 pr-2.5 py-1 rounded-lg border ${palette}`}
       >
         <span
-          className={`w-4 h-4 rounded-full overflow-hidden border ${ring} bg-slate-900/40 flex items-center justify-center text-[9px] font-black text-slate-200`}
+          className={`absolute -left-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full overflow-hidden border ${ring} bg-slate-950/60 glass flex items-center justify-center text-[10px] font-black text-slate-100 shadow-lg`}
           aria-hidden="true"
         >
           {imageOk ? (
@@ -907,11 +907,11 @@ const App: React.FC = () => {
 
           {/* Improved Filter UI with Tags */}
           {activeTab === "reports" && (
-            <div className="bg-slate-950/25 glass p-6 rounded-[2rem] border-2 border-white/10 space-y-4 shadow-xl">
+            <div className="bg-slate-950/60 glass p-6 rounded-[2rem] border-2 border-white/10 space-y-4 shadow-xl">
               {/* Hero Tags Search */}
               <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
                 <div className="flex items-center gap-3 text-slate-400 whitespace-nowrap">
-                  <div className="p-2 bg-slate-900/40 glass rounded-lg border border-white/10">
+                  <div className="p-2 bg-slate-950/60 glass rounded-lg border border-white/10">
                     <svg
                       className="w-5 h-5"
                       fill="currentColor"
