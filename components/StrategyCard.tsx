@@ -25,8 +25,13 @@ const StrategyCard: React.FC<Props> = ({
 }) => {
   const [mobileExpandSuccess, setMobileExpandSuccess] = useState(false);
   const [mobileExpandFail, setMobileExpandFail] = useState(false);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const getHero = (id: string) => HERO_DATABASE.find((h) => h.id === id);
+
+  const handleImageError = (heroId: string) => {
+    setImageErrors((prev) => ({ ...prev, [heroId]: true }));
+  };
   const successLogs = logs
     .filter((l) => l.type === "success")
     .sort((a, b) => b.votes - a.votes);
@@ -133,21 +138,38 @@ const StrategyCard: React.FC<Props> = ({
       </div>
 
       <div className="flex-1 flex flex-wrap justify-center md:justify-start gap-6">
-        {enemyIds.map((id) => {
+        {enemyIds.map((id, index) => {
           const hero = getHero(id);
+          const isTopThree = index < 3;
+          const showImage = isTopThree && !imageErrors[id];
           return hero ? (
             <div key={id} className="flex flex-col items-center gap-2 group">
               <div className="relative">
                 <div
-                  className={`w-14 h-14 rounded-full bg-slate-800 border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] ${
+                  className={`${
+                    isTopThree ? "w-20 h-20" : "w-14 h-14"
+                  } rounded-full bg-slate-800 border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
                     hero.attackType === "Magic"
                       ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
                       : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
                   }`}
                 >
-                  <span className="text-white font-black text-xs text-center leading-none px-1">
-                    {hero.name}
-                  </span>
+                  {showImage ? (
+                    <img
+                      src={`/heroes/${id}.png`}
+                      alt={hero.name}
+                      className="w-full h-full object-cover"
+                      onError={() => handleImageError(id)}
+                    />
+                  ) : (
+                    <span
+                      className={`text-white font-black ${
+                        isTopThree ? "text-sm" : "text-xs"
+                      } text-center leading-none px-1`}
+                    >
+                      {hero.name}
+                    </span>
+                  )}
                 </div>
                 <div
                   className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md text-[10px] font-black bg-gradient-to-br ${getTierColor(
@@ -316,9 +338,9 @@ const StrategyCard: React.FC<Props> = ({
             </button>
           </div>
           <div
-            className={`space-y-6 transition-all ${
+            className={`space-y-6 transition-all duration-300 ${
               compactView
-                ? "hidden xl:group-hover:block xl:block " +
+                ? "hidden xl:group-hover:block " +
                   (mobileExpandSuccess ? "!block" : "")
                 : ""
             }`}
@@ -402,9 +424,9 @@ const StrategyCard: React.FC<Props> = ({
             </button>
           </div>
           <div
-            className={`space-y-6 transition-all ${
+            className={`space-y-6 transition-all duration-300 ${
               compactView
-                ? "hidden xl:group-hover:block xl:block " +
+                ? "hidden xl:group-hover:block " +
                   (mobileExpandFail ? "!block" : "")
                 : ""
             }`}

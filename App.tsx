@@ -3,6 +3,7 @@ import { StrategyLog, LogType, Hero } from "./types";
 import StrategyForm from "./components/StrategyForm";
 import StrategyCard from "./components/StrategyCard";
 import HeroAutocomplete from "./components/HeroAutocomplete";
+import HeroAvatar from "./components/HeroAvatar";
 import AuthModal from "./components/AuthModal";
 import { getSupabaseBrowserClient } from "./lib/supabase/browserClient";
 import { HERO_DATABASE } from "./constants";
@@ -1022,16 +1023,19 @@ const App: React.FC = () => {
                   hero ? (
                     <div
                       key={hero.id}
-                      className="bg-slate-900/40 p-4 rounded-xl border border-slate-700/50 text-center"
+                      className="bg-slate-900/40 p-4 rounded-xl border border-slate-700/50 text-center flex flex-col items-center gap-3"
                     >
-                      <div className="text-2xl font-black text-white">
-                        {hero.name}
-                      </div>
-                      <div className="text-sm text-rose-400 font-bold mt-1">
-                        {count} reports
-                      </div>
-                      <div className="text-xs text-slate-500 mt-2 capitalize">
-                        {hero.attackType}
+                      <HeroAvatar hero={hero} size="lg" showTier />
+                      <div>
+                        <div className="text-lg font-black text-white">
+                          {hero.name}
+                        </div>
+                        <div className="text-sm text-rose-400 font-bold mt-1">
+                          {count} reports
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1 capitalize">
+                          {hero.attackType}
+                        </div>
                       </div>
                     </div>
                   ) : null
@@ -1062,16 +1066,19 @@ const App: React.FC = () => {
                   hero ? (
                     <div
                       key={hero.id}
-                      className="bg-slate-900/40 p-4 rounded-xl border border-slate-700/50 text-center"
+                      className="bg-slate-900/40 p-4 rounded-xl border border-slate-700/50 text-center flex flex-col items-center gap-3"
                     >
-                      <div className="text-2xl font-black text-white">
-                        {hero.name}
-                      </div>
-                      <div className="text-sm text-emerald-400 font-bold mt-1">
-                        {count} wins
-                      </div>
-                      <div className="text-xs text-slate-500 mt-2 capitalize">
-                        {hero.attackType}
+                      <HeroAvatar hero={hero} size="lg" showTier />
+                      <div>
+                        <div className="text-lg font-black text-white">
+                          {hero.name}
+                        </div>
+                        <div className="text-sm text-emerald-400 font-bold mt-1">
+                          {count} wins
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1 capitalize">
+                          {hero.attackType}
+                        </div>
                       </div>
                     </div>
                   ) : null
@@ -1103,36 +1110,39 @@ const App: React.FC = () => {
                     hero ? (
                       <div
                         key={hero.id}
-                        className="bg-slate-900/40 p-4 rounded-xl border border-blue-500/20 text-center"
+                        className="bg-slate-900/40 p-4 rounded-xl border border-blue-500/20 text-center flex flex-col items-center gap-3"
                       >
-                        <div className="text-xl font-black text-white">
-                          {hero.name}
-                        </div>
-                        <div className="text-sm text-blue-400 font-bold mt-1">
-                          {total} uses
-                        </div>
-                        <div className="flex items-center justify-center gap-2 mt-2 text-xs">
-                          <span className="text-emerald-400 font-bold">
-                            {wins}W
-                          </span>
-                          <span className="text-slate-500">-</span>
-                          <span className="text-rose-400 font-bold">
-                            {losses}L
-                          </span>
-                        </div>
-                        <div
-                          className={`text-xs font-black mt-2 ${
-                            winRate >= 0.6
-                              ? "text-emerald-400"
-                              : winRate >= 0.4
-                              ? "text-amber-400"
-                              : "text-rose-400"
-                          }`}
-                        >
-                          {(winRate * 100).toFixed(0)}% Win Rate
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1 capitalize">
-                          {hero.attackType}
+                        <HeroAvatar hero={hero} size="lg" showTier />
+                        <div>
+                          <div className="text-lg font-black text-white">
+                            {hero.name}
+                          </div>
+                          <div className="text-sm text-blue-400 font-bold mt-1">
+                            {total} uses
+                          </div>
+                          <div className="flex items-center justify-center gap-2 mt-2 text-xs">
+                            <span className="text-emerald-400 font-bold">
+                              {wins}W
+                            </span>
+                            <span className="text-slate-500">-</span>
+                            <span className="text-rose-400 font-bold">
+                              {losses}L
+                            </span>
+                          </div>
+                          <div
+                            className={`text-xs font-black mt-2 ${
+                              winRate >= 0.6
+                                ? "text-emerald-400"
+                                : winRate >= 0.4
+                                ? "text-amber-400"
+                                : "text-rose-400"
+                            }`}
+                          >
+                            {(winRate * 100).toFixed(0)}% Win Rate
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1 capitalize">
+                            {hero.attackType}
+                          </div>
                         </div>
                       </div>
                     ) : null
@@ -1164,36 +1174,39 @@ const App: React.FC = () => {
                     hero ? (
                       <div
                         key={hero.id}
-                        className="bg-slate-900/40 p-4 rounded-xl border border-orange-500/20 text-center"
+                        className="bg-slate-900/40 p-4 rounded-xl border border-orange-500/20 text-center flex flex-col items-center gap-3"
                       >
-                        <div className="text-xl font-black text-white">
-                          {hero.name}
-                        </div>
-                        <div className="text-sm text-orange-400 font-bold mt-1">
-                          {total} appearances
-                        </div>
-                        <div className="flex items-center justify-center gap-2 mt-2 text-xs">
-                          <span className="text-emerald-400 font-bold">
-                            {wins} defended
-                          </span>
-                          <span className="text-slate-500">-</span>
-                          <span className="text-rose-400 font-bold">
-                            {losses} broken
-                          </span>
-                        </div>
-                        <div
-                          className={`text-xs font-black mt-2 ${
-                            winRate >= 0.6
-                              ? "text-emerald-400"
-                              : winRate >= 0.4
-                              ? "text-amber-400"
-                              : "text-rose-400"
-                          }`}
-                        >
-                          {(winRate * 100).toFixed(0)}% Defense Rate
-                        </div>
-                        <div className="text-xs text-slate-500 mt-1 capitalize">
-                          {hero.attackType}
+                        <HeroAvatar hero={hero} size="lg" showTier />
+                        <div>
+                          <div className="text-lg font-black text-white">
+                            {hero.name}
+                          </div>
+                          <div className="text-sm text-orange-400 font-bold mt-1">
+                            {total} appearances
+                          </div>
+                          <div className="flex items-center justify-center gap-2 mt-2 text-xs">
+                            <span className="text-emerald-400 font-bold">
+                              {wins} defended
+                            </span>
+                            <span className="text-slate-500">-</span>
+                            <span className="text-rose-400 font-bold">
+                              {losses} broken
+                            </span>
+                          </div>
+                          <div
+                            className={`text-xs font-black mt-2 ${
+                              winRate >= 0.6
+                                ? "text-emerald-400"
+                                : winRate >= 0.4
+                                ? "text-amber-400"
+                                : "text-rose-400"
+                            }`}
+                          >
+                            {(winRate * 100).toFixed(0)}% Defense Rate
+                          </div>
+                          <div className="text-xs text-slate-500 mt-1 capitalize">
+                            {hero.attackType}
+                          </div>
                         </div>
                       </div>
                     ) : null
