@@ -686,6 +686,41 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateLogCounterTeam = async (
+    logId: string,
+    newCounterTeam: string[]
+  ) => {
+    // 1. Optimistic update
+    setLogs((prev) =>
+      prev.map((l) => {
+        if (l.id === logId) {
+          return { ...l, counterTeam: newCounterTeam };
+        }
+        return l;
+      })
+    );
+
+    // 2. Supabase update
+    const client = getSupabaseBrowserClient();
+    if (!client) return;
+
+    const { error } = await client
+      .from("strategy_logs")
+      .update({ counter_team: newCounterTeam })
+      .eq("id", logId);
+
+    if (error) {
+      console.error("Failed to update counter team order", error);
+      pushToast({
+        tone: "error",
+        title: "Update failed",
+        message: error.message,
+      });
+    } else {
+      pushToast({ tone: "success", title: "Counter team updated" });
+    }
+  };
+
   // Group logs by unique enemy squad
   const groupedLogs = useMemo(() => {
     const groups: Record<string, StrategyLog[]> = {};
@@ -1464,6 +1499,9 @@ const App: React.FC = () => {
                                 onUpdateEnemyTeamOrder={(newOrder) =>
                                   handleUpdateEnemyTeamOrder(key, newOrder)
                                 }
+                                onUpdateLogCounterTeam={
+                                  handleUpdateLogCounterTeam
+                                }
                               />
                             </div>
                           );
@@ -1543,6 +1581,7 @@ const App: React.FC = () => {
                             onUpdateEnemyTeamOrder={(newOrder) =>
                               handleUpdateEnemyTeamOrder(key, newOrder)
                             }
+                            onUpdateLogCounterTeam={handleUpdateLogCounterTeam}
                           />
                         </div>
                       );

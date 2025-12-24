@@ -17,6 +17,7 @@ interface Props {
   onDeleteLog: (id: string) => void;
   onEditLog: (log: StrategyLog) => void;
   onUpdateEnemyTeamOrder?: (newOrder: string[]) => void;
+  onUpdateLogCounterTeam?: (logId: string, newOrder: string[]) => void;
 }
 
 const StrategyCard: React.FC<Props> = ({
@@ -33,11 +34,13 @@ const StrategyCard: React.FC<Props> = ({
   onDeleteLog,
   onEditLog,
   onUpdateEnemyTeamOrder,
+  onUpdateLogCounterTeam,
 }) => {
   const [mobileExpandSuccess, setMobileExpandSuccess] = useState(false);
   const [mobileExpandFail, setMobileExpandFail] = useState(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [draggedLogId, setDraggedLogId] = useState<string | null>(null);
 
   const isIcewind = currentUserName === "Icewind";
 
@@ -49,8 +52,15 @@ const StrategyCard: React.FC<Props> = ({
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
+    setDraggedLogId(null); // Ensure we are dragging enemy team
     e.dataTransfer.effectAllowed = "move";
-    // Set a transparent image or custom drag image if needed
+    
+    // Set custom drag image to the circle avatar
+    const target = e.currentTarget as HTMLElement;
+    const img = target.querySelector("img");
+    if (img) {
+      e.dataTransfer.setDragImage(img, 32, 32);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
@@ -60,7 +70,7 @@ const StrategyCard: React.FC<Props> = ({
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIndex) return;
+    if (draggedIndex === null || draggedIndex === dropIndex || draggedLogId) return;
 
     const newOrder = [...enemyIds];
     const [removed] = newOrder.splice(draggedIndex, 1);
@@ -70,6 +80,34 @@ const StrategyCard: React.FC<Props> = ({
       onUpdateEnemyTeamOrder(newOrder);
     }
     setDraggedIndex(null);
+  };
+
+  const handleCounterDragStart = (e: React.DragEvent, index: number, logId: string) => {
+    setDraggedIndex(index);
+    setDraggedLogId(logId);
+    e.dataTransfer.effectAllowed = "move";
+
+    // Set custom drag image to the circle avatar
+    const target = e.currentTarget as HTMLElement;
+    const img = target.querySelector("img");
+    if (img) {
+      e.dataTransfer.setDragImage(img, 32, 32);
+    }
+  };
+
+  const handleCounterDrop = (e: React.DragEvent, dropIndex: number, log: StrategyLog) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex || draggedLogId !== log.id) return;
+
+    const newOrder = [...log.counterTeam];
+    const [removed] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(dropIndex, 0, removed);
+
+    if (onUpdateLogCounterTeam) {
+      onUpdateLogCounterTeam(log.id, newOrder);
+    }
+    setDraggedIndex(null);
+    setDraggedLogId(null);
   };
   const successLogs = logs
     .filter((l) => l.type === "success")
@@ -381,7 +419,7 @@ const StrategyCard: React.FC<Props> = ({
           <div className="flex items-start gap-5 flex-1">
             {/* Desktop: stacked hero icons */}
             <div className="hidden md:flex flex-col gap-2">
-              {log.counterTeam.slice(0, 3).map((id) => {
+              {log.counterTeam.slice(0, 3).map((id, index) => {
                 const hero = getHero(id);
                 if (!hero) return null;
                 const ring =
@@ -393,27 +431,40 @@ const StrategyCard: React.FC<Props> = ({
                     ? "border-blue-500/50"
                     : "border-orange-500/50";
                 return (
-                  <HeroHoverCard key={id} hero={hero}>
-                    <div
-                      tabIndex={0}
-                      className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform`}
-                    >
-                      {!imageErrors[id] ? (
-                        <img
-                          src={`/heroes/${id}.png`}
-                          alt={hero.name}
-                          className="w-full h-full object-cover"
-                          onError={() => handleImageError(id)}
-                        />
-                      ) : (
-                        <span className="text-white font-black text-sm text-center leading-none px-1">
-                          {hero.name}
-                        </span>
-                      )}
-                      <span className="sr-only">{hero.name}</span>
-                      <span className={`sr-only ${ring}`}></span>
-                    </div>
-                  </HeroHoverCard>
+                  <div
+                    key={id}
+                    draggable={isIcewind}
+                    onDragStart={(e) =>
+                      handleCounterDragStart(e, index, log.id)
+                    }
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleCounterDrop(e, index, log)}
+                    className={
+                      isIcewind ? "cursor-move active:cursor-grabbing" : ""
+                    }
+                  >
+                    <HeroHoverCard hero={hero}>
+                      <div
+                        tabIndex={0}
+                        className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform`}
+                      >
+                        {!imageErrors[id] ? (
+                          <img
+                            src={`/heroes/${id}.png`}
+                            alt={hero.name}
+                            className="w-full h-full object-cover"
+                            onError={() => handleImageError(id)}
+                          />
+                        ) : (
+                          <span className="text-white font-black text-sm text-center leading-none px-1">
+                            {hero.name}
+                          </span>
+                        )}
+                        <span className="sr-only">{hero.name}</span>
+                        <span className={`sr-only ${ring}`}></span>
+                      </div>
+                    </HeroHoverCard>
+                  </div>
                 );
               })}
             </div>
