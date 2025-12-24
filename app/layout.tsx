@@ -56,9 +56,11 @@ export default function RootLayout({
 
           /* Glassmorphism utility (colors stay in Tailwind classes) */
           .glass {
-            -webkit-backdrop-filter: blur(24px) saturate(1.4);
-            backdrop-filter: blur(24px) saturate(1.4);
-            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+            -webkit-backdrop-filter: blur(20px) saturate(1.8);
+            backdrop-filter: blur(20px) saturate(1.8);
+            box-shadow: 
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.05);
           }
 
           /* Slate / Film Grain Texture */

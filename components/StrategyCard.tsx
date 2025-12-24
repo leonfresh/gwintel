@@ -493,7 +493,7 @@ const StrategyCard: React.FC<Props> = ({
   };
 
   return (
-    <div className="bg-slate-900/60 glass bg-grain rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">
+    <div className="bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">
       <EnemySquadHeader />
       <div
         className={

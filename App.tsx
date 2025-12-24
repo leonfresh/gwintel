@@ -1439,7 +1439,7 @@ const App: React.FC = () => {
                                   });
                               }, 50);
                             }}
-                            className="text-left bg-slate-900/60 glass bg-grain rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl hover:border-white/20 transition-colors p-5"
+                            className="text-left bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl hover:border-white/20 transition-colors p-5"
                             title="Open squad"
                           >
                             <div className="flex items-center justify-center gap-3">
@@ -1719,7 +1719,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Top Heroes for Defense (with defense rates) */}
-                <div className="bg-slate-950/20 glass bg-grain p-8 rounded-[2rem] border-2 border-white/10">
+                <div className="bg-slate-950/20 glass bg-grain p-8 rounded-[2rem] border border-white/10">
                   <h3 className="text-xl font-black text-orange-400 uppercase tracking-wider mb-6 flex items-center gap-3">
                     <svg
                       className="w-6 h-6"
@@ -1784,7 +1784,7 @@ const App: React.FC = () => {
 
                 <div className="grid md:grid-cols-2 gap-8">
                   {/* Most Failed Enemy Teams */}
-                  <div className="bg-slate-950/20 glass bg-grain p-8 rounded-[2rem] border-2 border-white/10">
+                  <div className="bg-slate-950/20 glass bg-grain p-8 rounded-[2rem] border border-white/10">
                     <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider mb-6">
                       💀 Most Failed Enemy Teams
                     </h3>
@@ -1815,7 +1815,7 @@ const App: React.FC = () => {
                   </div>
 
                   {/* Most Successful Counter Teams */}
-                  <div className="bg-slate-950/20 glass bg-grain p-8 rounded-[2rem] border-2 border-white/10">
+                  <div className="bg-slate-950/20 glass bg-grain p-8 rounded-[2rem] border border-white/10">
                     <h3 className="text-lg font-black text-emerald-400 uppercase tracking-wider mb-6">
                       ✨ Most Successful Counter Teams
                     </h3>
@@ -1850,7 +1850,7 @@ const App: React.FC = () => {
 
                 <div className="grid md:grid-cols-2 gap-8">
                   {/* Highest Win Rate Squads */}
-                  <div className="bg-slate-800/60 bg-grain p-8 rounded-[2rem] border-2 border-slate-700/50">
+                  <div className="bg-slate-800/60 bg-grain p-8 rounded-[2rem] border border-slate-700/50">
                     <h3 className="text-lg font-black text-emerald-400 uppercase tracking-wider mb-6">
                       🏆 Easiest Enemy Squads (3+ reports)
                     </h3>
@@ -1889,7 +1889,7 @@ const App: React.FC = () => {
                   </div>
 
                   {/* Lowest Win Rate Squads */}
-                  <div className="bg-slate-800/60 bg-grain p-8 rounded-[2rem] border-2 border-slate-700/50">
+                  <div className="bg-slate-800/60 bg-grain p-8 rounded-[2rem] border border-slate-700/50">
                     <h3 className="text-lg font-black text-rose-400 uppercase tracking-wider mb-6">
                       ⚠️ Hardest Enemy Squads (3+ reports)
                     </h3>
