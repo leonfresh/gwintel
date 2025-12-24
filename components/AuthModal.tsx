@@ -62,7 +62,7 @@ export default function AuthModal({
 
   const signIn = async () => {
     if (!supabase) {
-      setStatus('Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+      setStatus('Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.');
       return;
     }
     setLoading(true);
@@ -78,7 +78,7 @@ export default function AuthModal({
 
   const signUp = async () => {
     if (!supabase) {
-      setStatus('Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+      setStatus('Missing Supabase env vars. Add NEXT_PUBLIC_SUPABASE_URL and either NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.');
       return;
     }
     setLoading(true);

@@ -268,7 +268,8 @@ const App: React.FC = () => {
       {!supabaseReady ? (
         <div className="mb-8 p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-200">
           Missing Supabase env vars. Add <span className="font-mono">NEXT_PUBLIC_SUPABASE_URL</span> and{' '}
-          <span className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</span> in <span className="font-mono">.env.local</span>.
+          <span className="font-mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</span> (or <span className="font-mono">NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</span>) in{' '}
+          <span className="font-mono">.env.local</span>.
         </div>
       ) : null}
 

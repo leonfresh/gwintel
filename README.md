@@ -16,7 +16,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1inRyttZ_4ZqOx_z976amoj
    `npm install`
 2. Add your Supabase env vars in `.env.local` (see [.env.local.example](.env.local.example)):
    - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)
 3. Create the database tables in Supabase:
    - Run the SQL in [supabase/schema.sql](supabase/schema.sql)
 3. Run the app (Next.js):
