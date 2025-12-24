@@ -324,7 +324,9 @@ const StrategyForm: React.FC<Props> = ({
 
                   <div className="flex-1 flex items-center gap-3">
                     {(() => {
-                      const hero = HERO_DATABASE.find((h) => h.id === slot.heroId);
+                      const hero = HERO_DATABASE.find(
+                        (h) => h.id === slot.heroId
+                      );
                       return hero ? (
                         <HeroHoverCard hero={hero}>
                           <span

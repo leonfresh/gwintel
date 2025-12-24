@@ -194,7 +194,10 @@ const StrategyCard: React.FC<Props> = ({
           const showImage = isTopThree && !imageErrors[id];
           return hero ? (
             <HeroHoverCard key={id} hero={hero}>
-              <div className="flex flex-col items-center gap-2 group" tabIndex={0}>
+              <div
+                className="flex flex-col items-center gap-2 group"
+                tabIndex={0}
+              >
                 <div className="relative">
                   <div
                     className={`${
@@ -323,27 +326,63 @@ const StrategyCard: React.FC<Props> = ({
     return (
       <div className="p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all hover:bg-slate-900/75 shadow-sm hover:shadow-xl">
         <div className="flex justify-between items-start gap-6">
-          <div className="flex-1 space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {log.counterTeam.map((id) => (
-                <HeroNameChip
-                  key={id}
-                  heroId={id}
-                  tone={log.type === "success" ? "success" : "fail"}
-                />
-              ))}
+          <div className="flex items-start gap-5 flex-1">
+            {/* Desktop: stacked hero icons */}
+            <div className="hidden md:flex flex-col gap-2">
+              {log.counterTeam.slice(0, 3).map((id) => {
+                const hero = getHero(id);
+                if (!hero) return null;
+                const ring =
+                  log.type === "success"
+                    ? "border-emerald-400/30"
+                    : "border-rose-400/30";
+                const border =
+                  hero.attackType === "Magic"
+                    ? "border-blue-500/50"
+                    : "border-orange-500/50";
+                return (
+                  <HeroHoverCard key={id} hero={hero}>
+                    <div
+                      tabIndex={0}
+                      className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform`}
+                    >
+                      <img
+                        src={`/heroes/${id}.png`}
+                        alt={hero.name}
+                        className="w-full h-full object-cover"
+                        onError={() => handleImageError(id)}
+                      />
+                      <span className="sr-only">{hero.name}</span>
+                      <span className={`sr-only ${ring}`}></span>
+                    </div>
+                  </HeroHoverCard>
+                );
+              })}
             </div>
 
-            <SkillQueueRow queue={log.skillQueue || []} />
-            <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
-              “{log.notes || "No specific tactics recorded."}”
-            </p>
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-black text-white">
-                {log.author.charAt(0).toUpperCase()}
+            <div className="flex-1 space-y-4">
+              {/* Mobile: chips */}
+              <div className="flex flex-wrap gap-2 md:hidden">
+                {log.counterTeam.map((id) => (
+                  <HeroNameChip
+                    key={id}
+                    heroId={id}
+                    tone={log.type === "success" ? "success" : "fail"}
+                  />
+                ))}
               </div>
-              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                Intel by <span className="text-blue-400">{log.author}</span>
+
+              <SkillQueueRow queue={log.skillQueue || []} />
+              <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
+                “{log.notes || "No specific tactics recorded."}”
+              </p>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-black text-white">
+                  {log.author.charAt(0).toUpperCase()}
+                </div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  Intel by <span className="text-blue-400">{log.author}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -431,11 +470,15 @@ const StrategyCard: React.FC<Props> = ({
   return (
     <div className="bg-slate-900/60 glass rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">
       <EnemySquadHeader />
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-0">
+      <div
+        className={
+          compactView ? "grid grid-cols-1 xl:grid-cols-2 gap-0" : "space-y-0"
+        }
+      >
         {/* Effective Column */}
         <div
-          className={`p-8 border-r border-white/10 bg-slate-950/10 transition-all ${
-            compactView ? "group relative" : ""
+          className={`p-8 bg-slate-950/10 transition-all ${
+            compactView ? "group relative border-r border-white/10" : ""
           }`}
         >
           <div className="flex items-center justify-between mb-8">
@@ -499,11 +542,11 @@ const StrategyCard: React.FC<Props> = ({
             </button>
           </div>
           <div
-            className={`space-y-6 transition-all duration-300 ${
+            className={`transition-all duration-300 ${
               compactView
-                ? "hidden xl:group-hover:block " +
+                ? "space-y-6 hidden xl:group-hover:block " +
                   (mobileExpandSuccess ? "!block" : "")
-                : ""
+                : "grid grid-cols-1 lg:grid-cols-2 gap-6"
             }`}
           >
             {successLogs.length > 0 ? (
@@ -521,7 +564,7 @@ const StrategyCard: React.FC<Props> = ({
         {/* Fail Column */}
         <div
           className={`p-8 bg-slate-950/10 transition-all ${
-            compactView ? "group relative" : ""
+            compactView ? "group relative" : "border-t border-white/10"
           }`}
         >
           <div className="flex items-center justify-between mb-8">
@@ -541,7 +584,7 @@ const StrategyCard: React.FC<Props> = ({
                   />
                 </svg>
               </div>
-              Ineffective Attackers
+              Ineffective Counters
               {compactView && (
                 <button
                   onClick={() => setMobileExpandFail(!mobileExpandFail)}
@@ -585,11 +628,11 @@ const StrategyCard: React.FC<Props> = ({
             </button>
           </div>
           <div
-            className={`space-y-6 transition-all duration-300 ${
+            className={`transition-all duration-300 ${
               compactView
-                ? "hidden xl:group-hover:block " +
+                ? "space-y-6 hidden xl:group-hover:block " +
                   (mobileExpandFail ? "!block" : "")
-                : ""
+                : "grid grid-cols-1 lg:grid-cols-2 gap-6"
             }`}
           >
             {failLogs.length > 0 ? (
