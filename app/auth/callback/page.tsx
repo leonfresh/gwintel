@@ -15,38 +15,35 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    (async () => {
+    const handleAuthCallback = async () => {
       try {
-        // Get the code from URL params
-        const hashParams = new URLSearchParams(
-          window.location.hash.substring(1)
-        );
-        const searchParams = new URLSearchParams(window.location.search);
-
-        const code = searchParams.get("code") || hashParams.get("code");
-
-        if (!code) {
-          setStatus("No auth code found in URL");
-          return;
-        }
-
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        // Let Supabase handle the OAuth callback automatically
+        const { data, error } = await supabase.auth.getSession();
 
         if (error) {
-          setStatus(error.message);
+          console.error("Auth error:", error);
+          setStatus(`Error: ${error.message}`);
           return;
         }
 
-        setStatus("Signed in. Redirecting...");
-        setTimeout(() => router.replace("/"), 500);
+        if (data.session) {
+          setStatus("Signed in successfully! Redirecting...");
+          setTimeout(() => router.replace("/"), 1000);
+        } else {
+          setStatus("No session found. Please try signing in again.");
+          setTimeout(() => router.replace("/"), 2000);
+        }
       } catch (e) {
+        console.error("Callback error:", e);
         setStatus(
           `Failed to finalize auth: ${
             e instanceof Error ? e.message : "Unknown error"
           }`
         );
       }
-    })();
+    };
+
+    handleAuthCallback();
   }, [router, supabase]);
 
   return (
