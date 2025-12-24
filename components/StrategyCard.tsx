@@ -280,8 +280,8 @@ const StrategyCard: React.FC<Props> = ({
       if (!queue || queue.length === 0) return null;
 
       return (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="text-[11px] font-black uppercase tracking-widest text-blue-300">
+        <div className="flex flex-col items-end gap-1">
+          <div className="text-[10px] font-black uppercase tracking-widest text-blue-300">
             Skill Queue
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -400,60 +400,60 @@ const StrategyCard: React.FC<Props> = ({
                   Intel by <span className="text-blue-400">{log.author}</span>
                 </div>
               </div>
+              {isOwnPost && (
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => onEditLog(log)}
+                    className="text-slate-500 hover:text-blue-400 transition-all transform hover:scale-110 active:scale-95 text-xs"
+                    title="Edit your post"
+                    aria-label="Edit your post"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.5"
+                        d="M11 4h-3a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2.5"
+                        d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onDeleteLog(log.id)}
+                    className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-110 active:scale-95 text-xs"
+                    title="Delete your post"
+                    aria-label="Delete your post"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="3"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-900/80 glass py-2 rounded-xl border border-white/10">
-            {isOwnPost ? (
-              <div className="flex flex-col items-center gap-1 mb-1">
-                <button
-                  onClick={() => onEditLog(log)}
-                  className="text-slate-500 hover:text-blue-400 transition-all transform hover:scale-110 active:scale-95"
-                  title="Edit your post"
-                  aria-label="Edit your post"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.5"
-                      d="M11 4h-3a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2v-3"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.5"
-                      d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => onDeleteLog(log.id)}
-                  className="text-slate-500 hover:text-rose-400 transition-all transform hover:scale-110 active:scale-95"
-                  title="Delete your post"
-                  aria-label="Delete your post"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="3"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-            ) : null}
             <button
               onClick={() => onVote(log.id, "up")}
               className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
@@ -480,9 +480,9 @@ const StrategyCard: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Skill Queue - positioned at bottom */}
+        {/* Skill Queue - positioned at bottom right */}
         {log.skillQueue && log.skillQueue.length > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-3 overflow-x-auto overflow-y-hidden scrollbar-hide">
+          <div className="absolute bottom-0 right-0 px-5 pb-3 max-w-[calc(100%-5rem)]">
             <SkillQueueRow queue={log.skillQueue} />
           </div>
         )}
@@ -491,7 +491,7 @@ const StrategyCard: React.FC<Props> = ({
   };
 
   return (
-    <div className="bg-slate-900/60 glass rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">
+    <div className="bg-slate-900/60 glass bg-grain rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors">
       <EnemySquadHeader />
       <div
         className={

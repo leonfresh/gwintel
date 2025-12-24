@@ -190,7 +190,7 @@ export default function AuthModal({
         className="absolute inset-0 bg-black/70"
       />
 
-      <div className="relative mx-auto mt-24 w-[min(520px,92vw)] rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl">
+      <div className="relative mx-auto mt-24 w-[min(520px,92vw)] rounded-3xl border border-slate-700 bg-slate-900 bg-grain shadow-2xl">
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-black text-white">{title}</h2>

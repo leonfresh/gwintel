@@ -43,7 +43,7 @@ export default function MessageModal({
       />
 
       <div
-        className={`relative mx-auto mt-28 w-[min(520px,92vw)] rounded-3xl border-2 ${accent} bg-slate-900 shadow-2xl`}
+        className={`relative mx-auto mt-28 w-[min(520px,92vw)] rounded-3xl border-2 ${accent} bg-slate-900 bg-grain shadow-2xl`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

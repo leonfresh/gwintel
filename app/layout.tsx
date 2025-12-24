@@ -56,8 +56,15 @@ export default function RootLayout({
 
           /* Glassmorphism utility (colors stay in Tailwind classes) */
           .glass {
-            -webkit-backdrop-filter: blur(18px) saturate(1.15);
-            backdrop-filter: blur(18px) saturate(1.15);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            backdrop-filter: blur(24px) saturate(1.4);
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+          }
+
+          /* Slate / Film Grain Texture */
+          .bg-grain {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.07'/%3E%3C/svg%3E");
+            background-repeat: repeat;
           }
 
           @media (prefers-reduced-motion: reduce) {
@@ -78,6 +85,7 @@ export default function RootLayout({
           <div className="absolute -bottom-64 -right-64 w-[48rem] h-[48rem] rounded-full bg-orb animate-drift-b bg-gradient-to-tr from-emerald-500/20 via-cyan-500/12 to-transparent" />
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[40rem] h-[40rem] rounded-full bg-orb animate-drift-c bg-gradient-to-r from-purple-500/12 via-blue-500/10 to-emerald-500/12" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-950/40 to-slate-950/80" />
+          <div className="absolute inset-0 bg-grain opacity-20 mix-blend-overlay" />
         </div>
 
         {children}
