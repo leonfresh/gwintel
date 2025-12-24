@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { StrategyLog, Hero, LogType } from "../types";
+import { StrategyLog, LogType } from "../types";
 import { HERO_DATABASE } from "../constants";
 
 interface Props {
@@ -79,7 +79,8 @@ const StrategyCard: React.FC<Props> = ({
       tone === "success"
         ? "bg-emerald-500/10 text-emerald-200 border-emerald-500/20"
         : "bg-rose-500/10 text-rose-200 border-rose-500/20";
-    const ring = tone === "success" ? "border-emerald-400/30" : "border-rose-400/30";
+    const ring =
+      tone === "success" ? "border-emerald-400/30" : "border-rose-400/30";
 
     return (
       <span
@@ -187,7 +188,7 @@ const StrategyCard: React.FC<Props> = ({
                 <div
                   className={`${
                     isTopThree ? "w-20 h-20" : "w-14 h-14"
-                    } rounded-full bg-slate-950/25 glass border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
+                  } rounded-full bg-slate-950/25 glass border-2 flex items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden ${
                     hero.attackType === "Magic"
                       ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
                       : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
@@ -260,7 +261,7 @@ const StrategyCard: React.FC<Props> = ({
             ))}
           </div>
           <p className="text-sm text-slate-300 italic leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
-            "{log.notes || "No specific tactics recorded."}"
+            “{log.notes || "No specific tactics recorded."}”
           </p>
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-black text-white">

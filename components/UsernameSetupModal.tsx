@@ -52,7 +52,7 @@ export default function UsernameSetupModal({ open, onComplete }: Props) {
       }
 
       onComplete();
-    } catch (e) {
+    } catch {
       setError("Failed to update username");
       setLoading(false);
     }
