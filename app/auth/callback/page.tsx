@@ -17,17 +17,34 @@ export default function AuthCallbackPage() {
 
     (async () => {
       try {
-        const { error } = await supabase.auth.exchangeCodeForSession(
-          window.location.href
+        // Get the code from URL params
+        const hashParams = new URLSearchParams(
+          window.location.hash.substring(1)
         );
+        const searchParams = new URLSearchParams(window.location.search);
+
+        const code = searchParams.get("code") || hashParams.get("code");
+
+        if (!code) {
+          setStatus("No auth code found in URL");
+          return;
+        }
+
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+
         if (error) {
           setStatus(error.message);
           return;
         }
+
         setStatus("Signed in. Redirecting...");
-        router.replace("/");
+        setTimeout(() => router.replace("/"), 500);
       } catch (e) {
-        setStatus("Failed to finalize auth.");
+        setStatus(
+          `Failed to finalize auth: ${
+            e instanceof Error ? e.message : "Unknown error"
+          }`
+        );
       }
     })();
   }, [router, supabase]);
