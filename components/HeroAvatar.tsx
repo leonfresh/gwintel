@@ -28,6 +28,7 @@ const HeroAvatar: React.FC<HeroAvatarProps> = ({
   };
 
   const getTierColor = (tier: string) => {
+    if (tier.includes("OP")) return "from-fuchsia-500 to-rose-600 text-white";
     if (tier.includes("SSS")) return "from-yellow-400 to-orange-600 text-white";
     if (tier.includes("SS")) return "from-purple-500 to-indigo-700 text-white";
     if (tier.includes("S")) return "from-blue-500 to-blue-700 text-white";
@@ -49,7 +50,9 @@ const HeroAvatar: React.FC<HeroAvatarProps> = ({
           <img
             src={`/heroes/${hero.id}.png`}
             alt={hero.name}
-            className={cropPortrait ? "hero-portrait-img" : "w-full h-full object-cover"}
+            className={
+              cropPortrait ? "hero-portrait-img" : "w-full h-full object-cover"
+            }
             onError={() => setImageError(true)}
           />
         ) : (

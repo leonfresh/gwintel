@@ -17,7 +17,7 @@ export const HERO_DATABASE: Hero[] = [
       "Extreme Chill, Freeze, Damage Resistance, Heal, Block Rate Boost, Effect Probability Reduction, Ignore Defense",
     attackType: "Physical",
     range: "All Enemies",
-    tier: "SSS",
+    tier: "OP",
   },
   {
     id: "freyja",
@@ -26,7 +26,7 @@ export const HERO_DATABASE: Hero[] = [
       "Magic Attack Boost, Effect Hit Rate Boost, Bleed, Blessing, Barrier, Ignore Defense, HP Alteration",
     attackType: "Magic",
     range: "All Enemies",
-    tier: "SSS",
+    tier: "OP",
   },
   {
     id: "trude",
@@ -44,13 +44,12 @@ export const HERO_DATABASE: Hero[] = [
       "Clone, Skill Effects Change (Clone Presence), Petrify, Crit Rate Boost (100% at 6th Transcendence), Ignore Defense, Cooldown Reduction (On Damage Taken), Heal All Allies (On Skill Activation / HP Below Half), Damage Resistance, Guts, Attack Power-Based Defense Boost, Crowd Control Immunity",
     attackType: "Magic",
     range: "All Enemies",
-    tier: "SSS",
+    tier: "OP",
   },
   {
     id: "ryan",
     name: "Ryan",
-    ability:
-      "3体攻撃スキル与ダメ上昇, Blind, Burn Immunity, Damage Immunity, Taunt, Cooldown Reduction",
+    ability: "Blind, Burn Immunity, Damage Immunity, Taunt, Cooldown Reduction",
     attackType: "Physical",
     range: "3 Enemies",
     tier: "SS",

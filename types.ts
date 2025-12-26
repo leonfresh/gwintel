@@ -1,4 +1,14 @@
-export type HeroTier = "SSS" | "SS" | "S+" | "S" | "A+" | "A" | "B" | "C" | "D";
+export type HeroTier =
+  | "OP"
+  | "SSS"
+  | "SS"
+  | "S+"
+  | "S"
+  | "A+"
+  | "A"
+  | "B"
+  | "C"
+  | "D";
 
 export interface Hero {
   id: string;

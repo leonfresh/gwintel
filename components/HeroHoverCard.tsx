@@ -4,6 +4,7 @@ import type { Hero } from "../types";
 import { useHeroHover } from "./HeroHoverProvider";
 
 function getTierGradientClass(tier: string) {
+  if (tier.includes("OP")) return "from-fuchsia-500 to-rose-600 text-white";
   if (tier.includes("SSS")) return "from-yellow-400 to-orange-600 text-white";
   if (tier.includes("SS")) return "from-purple-500 to-indigo-700 text-white";
   if (tier.includes("S")) return "from-blue-500 to-blue-700 text-white";

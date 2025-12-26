@@ -1,7 +1,6 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-import { AUTOCOMPLETE_DATABASE } from '../constants';
-import { Hero } from '../types';
+import React, { useState, useRef, useEffect } from "react";
+import { AUTOCOMPLETE_DATABASE } from "../constants";
+import { Hero } from "../types";
 
 interface Props {
   onSelect: (hero: Hero) => void;
@@ -9,15 +8,19 @@ interface Props {
   className?: string;
 }
 
-const HeroAutocomplete: React.FC<Props> = ({ onSelect, placeholder = "Search hero...", className = "" }) => {
-  const [query, setQuery] = useState('');
+const HeroAutocomplete: React.FC<Props> = ({
+  onSelect,
+  placeholder = "Search hero...",
+  className = "",
+}) => {
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<Hero[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (query.trim().length > 0) {
-      const filtered = AUTOCOMPLETE_DATABASE.filter(h => 
+      const filtered = AUTOCOMPLETE_DATABASE.filter((h) =>
         h.name.toLowerCase().includes(query.toLowerCase())
       ).slice(0, 8);
       setResults(filtered);
@@ -30,17 +33,20 @@ const HeroAutocomplete: React.FC<Props> = ({ onSelect, placeholder = "Search her
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleHeroSelect = (hero: Hero) => {
     onSelect(hero);
-    setQuery('');
+    setQuery("");
     setIsOpen(false);
   };
 
@@ -63,12 +69,22 @@ const HeroAutocomplete: React.FC<Props> = ({ onSelect, placeholder = "Search her
             >
               <div>
                 <span className="font-medium text-slate-100">{hero.name}</span>
-                <span className="ml-2 text-xs text-slate-400 capitalize">{hero.attackType}</span>
+                <span className="ml-2 text-xs text-slate-400 capitalize">
+                  {hero.attackType}
+                </span>
               </div>
-              <span className={`text-xs font-bold px-2 py-1 rounded bg-slate-900 ${
-                hero.tier.includes('SSS') ? 'text-yellow-400' : 
-                hero.tier.includes('SS') ? 'text-purple-400' : 'text-blue-400'
-              }`}>
+              <span
+                className={`text-xs font-bold px-2 py-1 rounded bg-slate-900 ${
+                  hero.tier.includes("OP")
+                    ? "text-fuchsia-300"
+                    :
+                  hero.tier.includes("SSS")
+                    ? "text-yellow-400"
+                    : hero.tier.includes("SS")
+                    ? "text-purple-400"
+                    : "text-blue-400"
+                }`}
+              >
                 {hero.tier}
               </span>
             </button>

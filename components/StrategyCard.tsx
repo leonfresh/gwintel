@@ -205,6 +205,7 @@ const StrategyCard: React.FC<Props> = ({
 
   // Determine overall threat level based on the highest hero tier
   const tierWeights = {
+    OP: 9,
     SSS: 8,
     SS: 7,
     "S+": 6,
@@ -224,6 +225,7 @@ const StrategyCard: React.FC<Props> = ({
   }, "D");
 
   const getTierColor = (tier: string) => {
+    if (tier.includes("OP")) return "from-fuchsia-500 to-rose-600 text-white";
     if (tier.includes("SSS")) return "from-yellow-400 to-orange-600 text-white";
     if (tier.includes("SS")) return "from-purple-500 to-indigo-700 text-white";
     if (tier.includes("S")) return "from-blue-500 to-blue-700 text-white";
@@ -285,7 +287,8 @@ const StrategyCard: React.FC<Props> = ({
           {logs.length} {logs.length === 1 ? "report" : "reports"}
         </div>
         <div className="text-[8px] font-bold text-slate-600 uppercase tracking-wider mt-1">
-          {successLogs.length} {successLogs.length === 1 ? "counter" : "counters"} •{" "}
+          {successLogs.length}{" "}
+          {successLogs.length === 1 ? "counter" : "counters"} •{" "}
           {failLogs.length} {failLogs.length === 1 ? "fail" : "fails"}
         </div>
       </div>
@@ -595,13 +598,13 @@ const StrategyCard: React.FC<Props> = ({
                     <HeroHoverCard hero={hero}>
                       <div
                         tabIndex={0}
-                          className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform hero-portrait-wrap`}
+                        className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform hero-portrait-wrap`}
                       >
                         {!imageErrors[id] ? (
                           <img
                             src={`/heroes/${id}.png`}
                             alt={hero.name}
-                              className="hero-portrait-img"
+                            className="hero-portrait-img"
                             onError={() => handleImageError(id)}
                           />
                         ) : (
