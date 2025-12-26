@@ -35,7 +35,7 @@ export const HERO_DATABASE: Hero[] = [
       "Crit Damage Boost, Block Rate Boost, Crowd Control Immunity, Revive, Pain Endurance, Barrier, Heal",
     attackType: "Physical",
     range: "All Enemies",
-    tier: "SSS",
+    tier: "OP",
   },
   {
     id: "wukong",
@@ -52,7 +52,7 @@ export const HERO_DATABASE: Hero[] = [
     ability: "Blind, Burn Immunity, Damage Immunity, Taunt, Cooldown Reduction",
     attackType: "Physical",
     range: "3 Enemies",
-    tier: "SS",
+    tier: "S",
   },
   {
     id: "elysia",
@@ -97,7 +97,7 @@ export const HERO_DATABASE: Hero[] = [
       "Effect Hit Rate Boost, Unable to Recover, Debuff Removal, Revive, HP Alteration",
     attackType: "Physical",
     range: "3 Enemies",
-    tier: "S+",
+    tier: "SS",
   },
   {
     id: "kagura",
@@ -124,7 +124,7 @@ export const HERO_DATABASE: Hero[] = [
       "Weakness Hit Damage Boost, Magic Vulnerability, Reduced Buff Duration, Debuff Removal, Guts, Life Drain",
     attackType: "Magic",
     range: "3 Enemies",
-    tier: "SS",
+    tier: "S",
   },
   {
     id: "orly",
@@ -160,7 +160,7 @@ export const HERO_DATABASE: Hero[] = [
       "Defense-Based Damage, Weakness Hit Chance Boost, Quintuple-Target Attack Resistance, Boss DMG, Defense Reduction, All Damage Reduction, Buff Removal, Ignore Defense",
     attackType: "Magic",
     range: "3 Enemies",
-    tier: "SS",
+    tier: "A",
   },
   {
     id: "platin",
@@ -214,7 +214,7 @@ export const HERO_DATABASE: Hero[] = [
       "Crit Damage Boost, Physical Vulnerability, Damage Nullification, Ignore Defense",
     attackType: "Physical",
     range: "3 Enemies",
-    tier: "SS",
+    tier: "A",
   },
   {
     id: "teo",
@@ -267,7 +267,7 @@ export const HERO_DATABASE: Hero[] = [
     ability: "Debuff Removal, Revive, Heal",
     attackType: "Magic",
     range: "Only Basic Attack",
-    tier: "B",
+    tier: "S",
   },
   {
     id: "rudy",
@@ -285,7 +285,7 @@ export const HERO_DATABASE: Hero[] = [
       "Weakness Hit Chance Boost, All Attack Reduction, Defense Reduction, All Damage Reduction, Physical Vulnerability, Burn, Revive",
     attackType: "Physical",
     range: "3 Enemies",
-    tier: "SS",
+    tier: "SSS",
   },
   {
     id: "eileene",
@@ -345,7 +345,7 @@ export const HERO_DATABASE: Hero[] = [
       "Physical Attack Boost, Defense Reduction, Physical Vulnerability, Incoming Healing Reduction, Reduced Buff Duration, Debuff Removal, Guts",
     attackType: "Physical",
     range: "All Enemies",
-    tier: "S+",
+    tier: "SSS",
   },
   {
     id: "silvesta",
@@ -380,7 +380,7 @@ export const HERO_DATABASE: Hero[] = [
     ability: "Defense Boost, Incoming Healing Boost, Heal, Continuous Healing",
     attackType: "Magic",
     range: "Only Basic Attack",
-    tier: "S+",
+    tier: "SS",
   },
   {
     id: "bane",
@@ -398,7 +398,7 @@ export const HERO_DATABASE: Hero[] = [
       "Max HP-Based Damage, Crit Rate Boost, Magic Damage Boost, Magic Resistance, Magic Vulnerability",
     attackType: "Magic",
     range: "Single Enemy",
-    tier: "S+",
+    tier: "A+",
   },
   {
     id: "ellin",
