@@ -11,6 +11,7 @@ interface Props {
   squadVotes: number;
   squadCreator: string;
   compactView: boolean;
+  embedded?: boolean;
   currentUserId: string | null;
   currentUserName?: string | null;
   highlightLogId?: string | null;
@@ -30,6 +31,7 @@ const StrategyCard: React.FC<Props> = ({
   squadVotes,
   squadCreator,
   compactView,
+  embedded = false,
   currentUserId,
   currentUserName,
   highlightLogId,
@@ -345,7 +347,7 @@ const StrategyCard: React.FC<Props> = ({
                 <HeroHoverCard hero={hero}>
                   <div className="relative" tabIndex={0}>
                     <div
-                      className={`w-14 h-14 rounded-full bg-slate-950/25 glass border-2 overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] ${
+                      className={`w-14 h-14 rounded-full bg-slate-950/25 glass border-2 overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hero-portrait-wrap ${
                         hero.attackType === "Magic"
                           ? "border-blue-500/50"
                           : "border-orange-500/50"
@@ -355,7 +357,7 @@ const StrategyCard: React.FC<Props> = ({
                         <img
                           src={`/heroes/${id}.png`}
                           alt={hero.name}
-                          className="w-full h-full object-cover"
+                          className="hero-portrait-img"
                           onError={() => handleImageError(id)}
                         />
                       ) : (
@@ -415,13 +417,13 @@ const StrategyCard: React.FC<Props> = ({
                           hero.attackType === "Magic"
                             ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
                             : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
-                        }`}
+                        } hero-portrait-wrap`}
                       >
                         {showImage ? (
                           <img
                             src={`/heroes/${id}.png`}
                             alt={hero.name}
-                            className="w-full h-full object-cover"
+                            className="hero-portrait-img"
                             onError={() => handleImageError(id)}
                           />
                         ) : (
@@ -513,7 +515,7 @@ const StrategyCard: React.FC<Props> = ({
                       <HeroHoverCard hero={hero}>
                         <span
                           tabIndex={0}
-                          className="w-5 h-5 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center text-[10px] shrink-0 transform scale-[1.3] origin-left shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
+                          className="w-5 h-5 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center text-[10px] shrink-0 transform scale-[1.3] origin-left shadow-[0_6px_18px_rgba(0,0,0,0.35)] hero-portrait-wrap"
                         >
                           {imageErrors[hero.id] ? (
                             <span className="text-white font-black">
@@ -523,7 +525,7 @@ const StrategyCard: React.FC<Props> = ({
                             <img
                               src={`/heroes/${hero.id}.png`}
                               alt=""
-                              className="w-full h-full object-cover"
+                              className="hero-portrait-img"
                               onError={() => handleImageError(hero.id)}
                             />
                           )}
@@ -593,13 +595,13 @@ const StrategyCard: React.FC<Props> = ({
                     <HeroHoverCard hero={hero}>
                       <div
                         tabIndex={0}
-                        className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform`}
+                          className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hover:scale-105 transition-transform hero-portrait-wrap`}
                       >
                         {!imageErrors[id] ? (
                           <img
                             src={`/heroes/${id}.png`}
                             alt={hero.name}
-                            className="w-full h-full object-cover"
+                              className="hero-portrait-img"
                             onError={() => handleImageError(id)}
                           />
                         ) : (
@@ -640,13 +642,13 @@ const StrategyCard: React.FC<Props> = ({
                       <HeroHoverCard hero={hero}>
                         <div
                           tabIndex={0}
-                          className={`w-12 h-12 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)]`}
+                          className={`w-12 h-12 rounded-full bg-slate-950/25 glass border-2 ${border} overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hero-portrait-wrap`}
                         >
                           {!imageErrors[id] ? (
                             <img
                               src={`/heroes/${id}.png`}
                               alt={hero.name}
-                              className="w-full h-full object-cover"
+                              className="hero-portrait-img"
                               onError={() => handleImageError(id)}
                             />
                           ) : (
@@ -804,7 +806,11 @@ const StrategyCard: React.FC<Props> = ({
   return (
     <div
       ref={cardRef}
-      className="bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors"
+      className={
+        embedded
+          ? "overflow-hidden"
+          : "bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl mb-12 hover:border-white/20 transition-colors"
+      }
     >
       <EnemySquadHeader />
       <div

@@ -88,7 +88,7 @@ export default function StrategyDetailsModal({
           </button>
         </div>
 
-        <div className="modal-scroll p-4 sm:p-6 overflow-auto max-h-[calc(88vh-72px)]">
+        <div className="modal-scroll overflow-auto max-h-[calc(88vh-72px)]">
           {children}
         </div>
       </div>

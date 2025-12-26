@@ -1313,6 +1313,7 @@ const App: React.FC = () => {
                       squadVotes={squadVotes[key] || 0}
                       squadCreator={firstLog.author}
                       compactView={false}
+                      embedded
                       currentUserId={authUserId}
                       currentUserName={authDisplayName}
                       highlightLogId={shareFocus.logId}
@@ -1735,13 +1736,13 @@ const App: React.FC = () => {
                                         {hero ? (
                                           <HeroHoverCard hero={hero}>
                                             <div
-                                              className="w-14 h-14 rounded-full bg-slate-950/25 glass border-2 border-white/10 overflow-hidden flex items-center justify-center"
+                                              className="w-14 h-14 rounded-full bg-slate-950/25 glass border-2 border-white/10 overflow-hidden flex items-center justify-center hero-portrait-wrap"
                                               tabIndex={0}
                                             >
                                               <img
                                                 src={`/heroes/${id}.png`}
                                                 alt={hero.name}
-                                                className="w-full h-full object-cover"
+                                                className="hero-portrait-img"
                                               />
                                             </div>
                                           </HeroHoverCard>

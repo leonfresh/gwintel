@@ -13,6 +13,7 @@ const HeroAvatar: React.FC<HeroAvatarProps> = ({
   showTier = false,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const cropPortrait = size !== "sm";
 
   const sizeClasses = {
     sm: "w-12 h-12 text-[10px]",
@@ -42,13 +43,13 @@ const HeroAvatar: React.FC<HeroAvatarProps> = ({
           hero.attackType === "Magic"
             ? "border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]"
             : "border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
-        }`}
+        } ${cropPortrait ? "hero-portrait-wrap" : ""}`}
       >
         {!imageError ? (
           <img
             src={`/heroes/${hero.id}.png`}
             alt={hero.name}
-            className="w-full h-full object-cover"
+            className={cropPortrait ? "hero-portrait-img" : "w-full h-full object-cover"}
             onError={() => setImageError(true)}
           />
         ) : (

@@ -69,6 +69,27 @@ export default function RootLayout({
             background-repeat: repeat;
           }
 
+          /* Portrait crop for hero avatars (cuts bottom stars) */
+          .hero-portrait-wrap { position: relative; }
+          .hero-portrait-wrap::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 42%;
+            pointer-events: none;
+            -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0));
+            mask-image: linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0));
+          }
+          .hero-portrait-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 9999px;
+            transform: translateY(7%) scale(1.06);
+          }
+
           @media (prefers-reduced-motion: reduce) {
             .animate-drift-a, .animate-drift-b, .animate-drift-c { animation: none !important; }
           }
