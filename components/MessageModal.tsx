@@ -35,7 +35,7 @@ export default function MessageModal({
       : "border-blue-500/20";
 
   return (
-    <div className="fixed inset-0 z-[250]">
+    <div className="fixed inset-0 z-[400]">
       <button
         aria-label="Close"
         onClick={onClose}

@@ -1487,7 +1487,7 @@ const App: React.FC = () => {
 
             {/* Improved Filter UI with Tags */}
             {activeTab === "reports" && (
-              <div className="bg-slate-900/60 glass p-6 rounded-[2rem] border-2 border-white/10 space-y-4 shadow-xl">
+              <div className="relative z-40 isolate bg-slate-900/60 glass p-6 rounded-[2rem] border-2 border-white/10 space-y-4 shadow-xl">
                 {/* Hero Tags Search */}
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
                   <div className="flex items-center gap-3 text-slate-400 whitespace-nowrap">
@@ -1712,16 +1712,6 @@ const App: React.FC = () => {
                             id={`squad-${key}`}
                             onClick={() => {
                               setOpenSquadKey(key);
-                              window.setTimeout(() => {
-                                const el = document.getElementById(
-                                  `squad-${key}`
-                                );
-                                if (el)
-                                  el.scrollIntoView({
-                                    behavior: "smooth",
-                                    block: "start",
-                                  });
-                              }, 50);
                             }}
                             className="text-left bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl hover:border-white/20 transition-colors p-5 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                             title="Open squad details"

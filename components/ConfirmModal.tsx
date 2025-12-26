@@ -28,7 +28,7 @@ export default function ConfirmModal({
       : "bg-slate-800 hover:bg-slate-700";
 
   return (
-    <div className="fixed inset-0 z-[250]">
+    <div className="fixed inset-0 z-[400]">
       <button
         aria-label="Cancel"
         onClick={onCancel}

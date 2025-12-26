@@ -54,7 +54,7 @@ const HeroAutocomplete: React.FC<Props> = ({ onSelect, placeholder = "Search her
         className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
       />
       {isOpen && results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+        <div className="absolute z-[80] mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
           {results.map((hero) => (
             <button
               key={hero.id}
