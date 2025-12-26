@@ -13,6 +13,36 @@ export default function StrategyDetailsModal({
 }) {
   if (!open) return null;
 
+  if (
+    typeof document !== "undefined" &&
+    !document.getElementById("modal-scrollbar-styles")
+  ) {
+    const styleEl = document.createElement("style");
+    styleEl.id = "modal-scrollbar-styles";
+    styleEl.textContent = `
+      /* Modal-only scrollbar styling */
+      .modal-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.45) rgba(2, 6, 23, 0.25);
+        overscroll-behavior: contain;
+      }
+      .modal-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+      .modal-scroll::-webkit-scrollbar-track {
+        background: rgba(2, 6, 23, 0.18);
+        border-radius: 999px;
+      }
+      .modal-scroll::-webkit-scrollbar-thumb {
+        background: linear-gradient(to bottom, rgba(226,232,240,0.30), rgba(148,163,184,0.45));
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 999px;
+      }
+      .modal-scroll::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(to bottom, rgba(226,232,240,0.45), rgba(148,163,184,0.65));
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
+
   return (
     <div className="fixed inset-0 z-[250]">
       <button
@@ -58,7 +88,7 @@ export default function StrategyDetailsModal({
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 overflow-auto max-h-[calc(88vh-72px)]">
+        <div className="modal-scroll p-4 sm:p-6 overflow-auto max-h-[calc(88vh-72px)]">
           {children}
         </div>
       </div>

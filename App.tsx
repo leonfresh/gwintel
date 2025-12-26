@@ -146,6 +146,37 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const anyModalOpen =
+      showForm ||
+      openSquadKey !== null ||
+      authModalOpen ||
+      Boolean(messageModal?.open) ||
+      confirmDeleteId !== null ||
+      showUsernameSetup;
+
+    if (!anyModalOpen) return;
+
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [
+    showForm,
+    openSquadKey,
+    authModalOpen,
+    messageModal?.open,
+    confirmDeleteId,
+    showUsernameSetup,
+  ]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const heroIdSet = new Set(HERO_DATABASE.map((h) => h.id));
@@ -1395,7 +1426,7 @@ const App: React.FC = () => {
                   className="absolute inset-0 bg-black/80 backdrop-blur-sm"
                 />
 
-                <div className="relative mx-auto mt-8 w-[min(1100px,96vw)] max-h-[88vh] overflow-auto">
+                <div className="modal-scroll relative mx-auto mt-8 w-[min(1100px,96vw)] max-h-[88vh] overflow-auto">
                   <StrategyForm
                     onSubmit={handleCreateLog}
                     onCancel={() => {
