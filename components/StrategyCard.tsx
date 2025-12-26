@@ -282,6 +282,10 @@ const StrategyCard: React.FC<Props> = ({
         <div className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
           {logs.length} {logs.length === 1 ? "report" : "reports"}
         </div>
+        <div className="text-[8px] font-bold text-slate-600 uppercase tracking-wider mt-1">
+          {successLogs.length} {successLogs.length === 1 ? "counter" : "counters"} •{" "}
+          {failLogs.length} {failLogs.length === 1 ? "fail" : "fails"}
+        </div>
       </div>
 
       <div className="flex flex-col items-center">
@@ -372,6 +376,13 @@ const StrategyCard: React.FC<Props> = ({
               </div>
             );
           })}
+        </div>
+
+        <div className="md:hidden mt-2 text-[10px] font-bold text-slate-300 text-center">
+          {enemyIds
+            .map((id) => getHero(id)?.name ?? id)
+            .filter(Boolean)
+            .join(" • ")}
         </div>
 
         {/* Desktop/tablet: larger icons + labels */}
@@ -481,11 +492,11 @@ const StrategyCard: React.FC<Props> = ({
       if (!queue || queue.length === 0) return null;
 
       return (
-        <div className="flex flex-col items-start md:items-end gap-1">
-          <div className="text-[10px] font-black uppercase tracking-widest text-blue-300">
+        <div className="flex items-center justify-between gap-3 w-full">
+          <div className="text-[10px] font-black uppercase tracking-widest text-blue-300 shrink-0">
             Skill Queue
           </div>
-          <div className="flex flex-wrap items-center gap-2 justify-start md:justify-end">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
             {queue.slice(0, 3).map((s, idx) => {
               const hero = getHero(s.heroId);
               const badge = s.skill === "top" ? "T" : "B";
@@ -494,29 +505,40 @@ const StrategyCard: React.FC<Props> = ({
                   key={`${s.heroId}-${idx}`}
                   className="flex items-center gap-2"
                 >
-                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-xl border border-white/10 bg-slate-950/20 glass text-slate-200 text-xs font-black">
-                    <span className="w-5 h-5 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center text-[10px]">
-                      {hero ? (
-                        imageErrors[hero.id] ? (
-                          <span className="text-white font-black">
-                            {hero.name.charAt(0)}
-                          </span>
-                        ) : (
-                          <img
-                            src={`/heroes/${hero.id}.png`}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            onError={() => handleImageError(hero.id)}
-                          />
-                        )
-                      ) : (
+                  <span
+                    className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl border border-white/10 bg-slate-950/20 glass text-slate-200 text-xs font-black"
+                    title={hero ? hero.name : "Unknown"}
+                  >
+                    {hero ? (
+                      <HeroHoverCard hero={hero}>
+                        <span
+                          tabIndex={0}
+                          className="w-5 h-5 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center text-[10px] shrink-0 transform scale-[1.3] origin-left shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
+                        >
+                          {imageErrors[hero.id] ? (
+                            <span className="text-white font-black">
+                              {hero.name.charAt(0)}
+                            </span>
+                          ) : (
+                            <img
+                              src={`/heroes/${hero.id}.png`}
+                              alt=""
+                              className="w-full h-full object-cover"
+                              onError={() => handleImageError(hero.id)}
+                            />
+                          )}
+                        </span>
+                      </HeroHoverCard>
+                    ) : (
+                      <span className="w-5 h-5 rounded-full overflow-hidden border border-white/10 bg-slate-950/40 flex items-center justify-center text-[10px] shrink-0 transform scale-[1.3] origin-left shadow-[0_6px_18px_rgba(0,0,0,0.35)]">
                         <span className="text-white font-black">?</span>
-                      )}
-                    </span>
-                    <span className="text-slate-300">
-                      {hero ? hero.name : "Unknown"}
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded-lg bg-blue-500/25 border border-blue-500/30 text-blue-100 text-[10px] font-black">
+                      </span>
+                    )}
+                    <span
+                      className="text-[13px] font-black tracking-widest bg-gradient-to-b from-blue-100 via-sky-200 to-blue-500 bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
+                      aria-label={badge === "T" ? "Top skill" : "Bottom skill"}
+                      title={badge === "T" ? "Top" : "Bottom"}
+                    >
                       {badge}
                     </span>
                   </span>
@@ -536,7 +558,7 @@ const StrategyCard: React.FC<Props> = ({
     return (
       <div
         id={`log-${log.id}`}
-        className={`relative overflow-hidden p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl ${tintClass} ${
+        className={`relative overflow-hidden p-5 bg-slate-900/70 glass rounded-2xl border border-white/10 group hover:border-white/20 transition-all shadow-sm hover:shadow-xl flex flex-col ${tintClass} ${
           isHighlighted ? "ring-2 ring-blue-500/35" : ""
         }`}
       >
@@ -594,7 +616,7 @@ const StrategyCard: React.FC<Props> = ({
               })}
             </div>
 
-            <div className="flex-1 space-y-4 pb-4 md:pb-10">
+            <div className="flex-1 space-y-4">
               {/* Mobile: chips */}
               <div className="md:hidden flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mx-1 px-1">
                 {log.counterTeam.slice(0, 3).map((id, index) => {
@@ -769,12 +791,12 @@ const StrategyCard: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Skill Queue: inline on mobile, bottom-right on md+ */}
-        {log.skillQueue && log.skillQueue.length > 0 && (
-          <div className="mt-4 md:mt-0 md:absolute md:bottom-0 md:right-0 px-0 md:px-5 pb-0 md:pb-3 max-w-full md:max-w-[calc(100%-5rem)]">
+        {/* Skill Queue footer bar */}
+        {log.skillQueue && log.skillQueue.length > 0 ? (
+          <div className="mt-4 -mx-5 -mb-5 px-5 py-3 border-t border-white/10 bg-slate-950/25 glass">
             <SkillQueueRow queue={log.skillQueue} />
           </div>
-        )}
+        ) : null}
       </div>
     );
   };
@@ -861,7 +883,7 @@ const StrategyCard: React.FC<Props> = ({
               compactView
                 ? "space-y-6 hidden xl:group-hover:block " +
                   (mobileExpandSuccess ? "!block" : "")
-                : "grid grid-cols-1 lg:grid-cols-2 gap-6"
+                : "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"
             }`}
           >
             {successLogs.length > 0 ? (
@@ -953,7 +975,7 @@ const StrategyCard: React.FC<Props> = ({
               compactView
                 ? "space-y-6 hidden xl:group-hover:block " +
                   (mobileExpandFail ? "!block" : "")
-                : "grid grid-cols-1 lg:grid-cols-2 gap-6"
+                : "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"
             }`}
           >
             {failLogs.length > 0 ? (

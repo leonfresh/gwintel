@@ -4,11 +4,13 @@ import StrategyForm from "./components/StrategyForm";
 import StrategyCard from "./components/StrategyCard";
 import HeroAutocomplete from "./components/HeroAutocomplete";
 import HeroAvatar from "./components/HeroAvatar";
+import HeroHoverCard from "./components/HeroHoverCard";
 import AuthModal from "./components/AuthModal";
 import UsernameSetupModal from "./components/UsernameSetupModal";
 import ToastStack, { ToastItem, ToastTone } from "./components/ToastStack";
 import MessageModal from "./components/MessageModal";
 import ConfirmModal from "./components/ConfirmModal";
+import StrategyDetailsModal from "./components/StrategyDetailsModal";
 import { getSupabaseBrowserClient } from "./lib/supabase/browserClient";
 import { HERO_DATABASE } from "./constants";
 import { HeroHoverProvider } from "./components/HeroHoverProvider";
@@ -132,8 +134,11 @@ const App: React.FC = () => {
   const [minVotes, setMinVotes] = useState<number>(0);
   const [squadVotes, setSquadVotes] = useState<Record<string, number>>({});
   const [compactView, setCompactView] = useState<boolean>(false);
-  const [cardView, setCardView] = useState<boolean>(false);
-  const [expandedSquadKey, setExpandedSquadKey] = useState<string | null>(null);
+  const [cardView, setCardView] = useState<boolean>(true);
+  const [openSquadKey, setOpenSquadKey] = useState<string | null>(null);
+  const [formReturnSquadKey, setFormReturnSquadKey] = useState<string | null>(
+    null
+  );
   const [shareFocus, setShareFocus] = useState<ShareFocusState>({
     squadKey: null,
     counterIds: [],
@@ -168,8 +173,8 @@ const App: React.FC = () => {
       });
 
       setActiveTab("reports");
-      setCardView(false);
-      setExpandedSquadKey(null);
+      setCardView(true);
+      setOpenSquadKey(squadKey);
       setFilterHeroIds([]);
       setTypeFilter("all");
       setMinVotes(0);
@@ -199,6 +204,14 @@ const App: React.FC = () => {
     const t = window.setTimeout(() => attemptScroll(), 400);
     return () => window.clearTimeout(t);
   }, [activeTab, cardView, logs.length, shareFocus.logId, shareFocus.squadKey]);
+
+  useEffect(() => {
+    if (!shareFocus.squadKey) return;
+    if (activeTab !== "reports") return;
+    if (!cardView) return;
+
+    setOpenSquadKey(shareFocus.squadKey);
+  }, [activeTab, cardView, shareFocus.squadKey]);
 
   useEffect(() => {
     const client = getSupabaseBrowserClient();
@@ -458,6 +471,11 @@ const App: React.FC = () => {
     }
     setShowForm(false);
     setAddState({});
+
+    if (formReturnSquadKey) {
+      setOpenSquadKey(formReturnSquadKey);
+      setFormReturnSquadKey(null);
+    }
   };
 
   const handleVote = async (id: string, type: "up" | "down") => {
@@ -693,7 +711,18 @@ const App: React.FC = () => {
   };
 
   const openEditLog = (log: StrategyLog) => {
+    if (!authEmail && openSquadKey) {
+      setOpenSquadKey(null);
+    }
     if (!ensureSignedIn("post")) return;
+
+    if (openSquadKey) {
+      setFormReturnSquadKey(openSquadKey);
+      setOpenSquadKey(null);
+    } else {
+      setFormReturnSquadKey(null);
+    }
+
     setAddState({
       enemyIds: log.enemyTeam,
       type: log.type,
@@ -703,14 +732,23 @@ const App: React.FC = () => {
       skillQueue: log.skillQueue,
     });
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const openAddLog = (enemyIds?: string[], type?: LogType) => {
+    if (!authEmail && openSquadKey) {
+      setOpenSquadKey(null);
+    }
     if (!ensureSignedIn("post")) return;
+
+    if (openSquadKey) {
+      setFormReturnSquadKey(openSquadKey);
+      setOpenSquadKey(null);
+    } else {
+      setFormReturnSquadKey(null);
+    }
+
     setAddState({ enemyIds, type, skillQueue: [] });
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleUpdateEnemyTeamOrder = async (
@@ -1221,6 +1259,47 @@ const App: React.FC = () => {
             }}
           />
 
+          <StrategyDetailsModal
+            open={openSquadKey !== null}
+            title="Squad Details"
+            onClose={() => setOpenSquadKey(null)}
+          >
+            {openSquadKey
+              ? (() => {
+                  const entry = groupedLogs.find(([k]) => k === openSquadKey);
+                  if (!entry) return null;
+
+                  const [key, logs] = entry;
+                  const firstLog = logs.reduce((oldest, log) =>
+                    log.createdAt < oldest.createdAt ? log : oldest
+                  );
+
+                  return (
+                    <StrategyCard
+                      squadKey={key}
+                      enemyIds={firstLog.enemyTeam}
+                      logs={logs}
+                      squadVotes={squadVotes[key] || 0}
+                      squadCreator={firstLog.author}
+                      compactView={false}
+                      currentUserId={authUserId}
+                      currentUserName={authDisplayName}
+                      highlightLogId={shareFocus.logId}
+                      onVote={handleVote}
+                      onSquadVote={(type) => handleSquadVote(key, type)}
+                      onAddLog={openAddLog}
+                      onDeleteLog={handleDeleteLog}
+                      onEditLog={openEditLog}
+                      onUpdateEnemyTeamOrder={(newOrder) =>
+                        handleUpdateEnemyTeamOrder(key, newOrder)
+                      }
+                      onUpdateLogCounterTeam={handleUpdateLogCounterTeam}
+                    />
+                  );
+                })()
+              : null}
+          </StrategyDetailsModal>
+
           <UsernameSetupModal
             open={showUsernameSetup}
             onComplete={() => setShowUsernameSetup(false)}
@@ -1301,20 +1380,51 @@ const App: React.FC = () => {
                 Loading intelligence...
               </div>
             ) : null}
-            {showForm && (
-              <StrategyForm
-                onSubmit={handleCreateLog}
-                onCancel={() => {
-                  setShowForm(false);
-                  setAddState({});
-                }}
-                initialEnemyTeam={addState.enemyIds}
-                initialType={addState.type}
-                initialCounterTeam={addState.counterIds}
-                initialNotes={addState.notes}
-                initialSkillQueue={addState.skillQueue}
-              />
-            )}
+            {showForm ? (
+              <div className="fixed inset-0 z-[260]">
+                <button
+                  aria-label="Close"
+                  onClick={() => {
+                    setShowForm(false);
+                    setAddState({});
+                    if (formReturnSquadKey) {
+                      setOpenSquadKey(formReturnSquadKey);
+                      setFormReturnSquadKey(null);
+                    }
+                  }}
+                  className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                />
+
+                <div className="relative mx-auto mt-8 w-[min(1100px,96vw)] max-h-[88vh] overflow-auto">
+                  <StrategyForm
+                    onSubmit={handleCreateLog}
+                    onCancel={() => {
+                      setShowForm(false);
+                      setAddState({});
+                      if (formReturnSquadKey) {
+                        setOpenSquadKey(formReturnSquadKey);
+                        setFormReturnSquadKey(null);
+                      }
+                    }}
+                    onBack={
+                      formReturnSquadKey
+                        ? () => {
+                            setShowForm(false);
+                            setAddState({});
+                            setOpenSquadKey(formReturnSquadKey);
+                            setFormReturnSquadKey(null);
+                          }
+                        : undefined
+                    }
+                    initialEnemyTeam={addState.enemyIds}
+                    initialType={addState.type}
+                    initialCounterTeam={addState.counterIds}
+                    initialNotes={addState.notes}
+                    initialSkillQueue={addState.skillQueue}
+                  />
+                </div>
+              </div>
+            ) : null}
 
             {/* Tab Navigation */}
             <div className="flex gap-4 border-b-2 border-slate-700/50">
@@ -1513,7 +1623,7 @@ const App: React.FC = () => {
                       onClick={() => {
                         const next = !cardView;
                         setCardView(next);
-                        if (!next) setExpandedSquadKey(null);
+                        if (!next) setOpenSquadKey(null);
                       }}
                       className={`p-2 rounded-lg border transition-all ${
                         cardView
@@ -1551,60 +1661,25 @@ const App: React.FC = () => {
                         const firstLog = logs.reduce((oldest, log) =>
                           log.createdAt < oldest.createdAt ? log : oldest
                         );
-
-                        const isExpanded = expandedSquadKey === key;
                         const enemyIds = firstLog.enemyTeam;
 
-                        if (isExpanded) {
-                          return (
-                            <div
-                              key={key}
-                              id={`squad-${key}`}
-                              className="col-span-full"
-                            >
-                              <div className="flex justify-end mb-3">
-                                <button
-                                  onClick={() => setExpandedSquadKey(null)}
-                                  className="px-4 py-2 bg-slate-900/40 glass hover:bg-slate-900/55 text-slate-200 rounded-xl text-xs font-black transition-all border border-white/10"
-                                  title="Collapse"
-                                >
-                                  CLOSE
-                                </button>
-                              </div>
-                              <StrategyCard
-                                squadKey={key}
-                                enemyIds={enemyIds}
-                                logs={logs}
-                                squadVotes={squadVotes[key] || 0}
-                                squadCreator={firstLog.author}
-                                compactView={false}
-                                currentUserId={authUserId}
-                                currentUserName={authDisplayName}
-                                highlightLogId={shareFocus.logId}
-                                onVote={handleVote}
-                                onSquadVote={(type) =>
-                                  handleSquadVote(key, type)
-                                }
-                                onAddLog={openAddLog}
-                                onDeleteLog={handleDeleteLog}
-                                onEditLog={openEditLog}
-                                onUpdateEnemyTeamOrder={(newOrder) =>
-                                  handleUpdateEnemyTeamOrder(key, newOrder)
-                                }
-                                onUpdateLogCounterTeam={
-                                  handleUpdateLogCounterTeam
-                                }
-                              />
-                            </div>
-                          );
-                        }
+                        const countersTotal = logs.filter(
+                          (l) => l.type === "success"
+                        ).length;
+                        const failsTotal = logs.filter(
+                          (l) => l.type === "fail"
+                        ).length;
+                        const rating = squadVotes[key] || 0;
+                        const enemyHeroes = enemyIds
+                          .map((id) => getHero(id))
+                          .filter(Boolean) as Hero[];
 
                         return (
                           <button
                             key={key}
                             id={`squad-${key}`}
                             onClick={() => {
-                              setExpandedSquadKey(key);
+                              setOpenSquadKey(key);
                               window.setTimeout(() => {
                                 const el = document.getElementById(
                                   `squad-${key}`
@@ -1616,31 +1691,68 @@ const App: React.FC = () => {
                                   });
                               }, 50);
                             }}
-                            className="text-left bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl hover:border-white/20 transition-colors p-5"
-                            title="Open squad"
+                            className="text-left bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl hover:border-white/20 transition-colors p-5 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                            title="Open squad details"
                           >
-                            <div className="flex items-center justify-center gap-3">
-                              {enemyIds.slice(0, 3).map((id) => {
-                                const hero = getHero(id);
-                                return (
-                                  <div
-                                    key={id}
-                                    className="w-14 h-14 rounded-full bg-slate-950/25 glass border-2 border-white/10 overflow-hidden flex items-center justify-center"
-                                  >
-                                    {hero ? (
-                                      <img
-                                        src={`/heroes/${id}.png`}
-                                        alt={hero.name}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <span className="text-xs font-black text-slate-200">
-                                        ?
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start justify-center gap-3">
+                                {enemyIds.slice(0, 3).map((id) => {
+                                  const hero = getHero(id);
+                                  return (
+                                    <div key={id} className="w-16">
+                                      <div className="flex flex-col items-center gap-2">
+                                        {hero ? (
+                                          <HeroHoverCard hero={hero}>
+                                            <div
+                                              className="w-14 h-14 rounded-full bg-slate-950/25 glass border-2 border-white/10 overflow-hidden flex items-center justify-center"
+                                              tabIndex={0}
+                                            >
+                                              <img
+                                                src={`/heroes/${id}.png`}
+                                                alt={hero.name}
+                                                className="w-full h-full object-cover"
+                                              />
+                                            </div>
+                                          </HeroHoverCard>
+                                        ) : (
+                                          <div className="w-14 h-14 rounded-full bg-slate-950/25 glass border-2 border-white/10 overflow-hidden flex items-center justify-center">
+                                            <span className="text-xs font-black text-slate-200">
+                                              ?
+                                            </span>
+                                          </div>
+                                        )}
+                                        <div className="text-[10px] font-bold text-slate-200 text-center leading-tight">
+                                          {hero?.name || id}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              <div
+                                className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black border ${
+                                  rating >= 0
+                                    ? "bg-emerald-500/10 text-emerald-200 border-emerald-500/20"
+                                    : "bg-rose-500/10 text-rose-200 border-rose-500/20"
+                                }`}
+                                title="Squad rating"
+                              >
+                                {rating >= 0 ? "+" : ""}
+                                {rating}
+                              </div>
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap gap-2 pt-2 border-t border-white/10">
+                              <div className="px-2.5 py-1 rounded-lg text-[10px] font-black border bg-emerald-500/10 text-emerald-200 border-emerald-500/20">
+                                Counters: {countersTotal}
+                              </div>
+                              <div className="px-2.5 py-1 rounded-lg text-[10px] font-black border bg-rose-500/10 text-rose-200 border-rose-500/20">
+                                Fails: {failsTotal}
+                              </div>
+                              <div className="px-2.5 py-1 rounded-lg text-[10px] font-black border bg-slate-800/40 text-slate-200 border-white/10">
+                                Reports: {logs.length}
+                              </div>
                             </div>
                           </button>
                         );

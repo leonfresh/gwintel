@@ -18,6 +18,7 @@ interface Props {
     >
   ) => void;
   onCancel: () => void;
+  onBack?: () => void;
   initialEnemyTeam?: string[];
   initialType?: LogType;
   initialCounterTeam?: string[];
@@ -28,6 +29,7 @@ interface Props {
 const StrategyForm: React.FC<Props> = ({
   onSubmit,
   onCancel,
+  onBack,
   initialEnemyTeam,
   initialType,
   initialCounterTeam,
@@ -136,13 +138,41 @@ const StrategyForm: React.FC<Props> = ({
       className="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl space-y-8 animate-in fade-in zoom-in-95 duration-300"
     >
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-black text-white italic tracking-tight">
-          LOG NEW INTELLIGENCE
-        </h2>
+        <div className="flex items-center gap-3">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="p-2 hover:bg-slate-700 rounded-full transition-colors text-slate-300 hover:text-white"
+              aria-label="Back"
+              title="Back"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+          ) : null}
+          <h2 className="text-2xl font-black text-white italic tracking-tight">
+            LOG NEW INTELLIGENCE
+          </h2>
+        </div>
+
         <button
           type="button"
           onClick={onCancel}
           className="p-2 hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-white"
+          aria-label="Close"
+          title="Close"
         >
           <svg
             className="w-6 h-6"
