@@ -567,7 +567,7 @@ const StrategyCard: React.FC<Props> = ({
           isHighlighted ? "ring-2 ring-blue-500/35" : ""
         }`}
       >
-        <div className="flex justify-between items-start gap-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
           <div className="flex items-start gap-5 flex-1">
             {/* Desktop: stacked hero icons */}
             <div className="hidden md:flex flex-col gap-2">
@@ -623,7 +623,7 @@ const StrategyCard: React.FC<Props> = ({
 
             <div className="flex-1 space-y-4">
               {/* Mobile: chips */}
-              <div className="md:hidden flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mx-1 px-1">
+              <div className="md:hidden flex items-center gap-2 flex-wrap pb-1 -mx-1 px-1">
                 {log.counterTeam.slice(0, 3).map((id, index) => {
                   const hero = getHero(id);
                   if (!hero) return null;
@@ -769,7 +769,7 @@ const StrategyCard: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-1 min-w-[48px] bg-slate-900/80 glass py-2 rounded-xl border border-white/10">
+          <div className="flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1 w-full sm:w-auto min-w-[48px] bg-slate-900/80 glass py-2 rounded-xl border border-white/10">
             <button
               onClick={() => onVote(log.id, "up")}
               className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"

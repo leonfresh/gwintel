@@ -75,6 +75,9 @@ const StrategyForm: React.FC<Props> = ({
 
   useEffect(() => {
     // Keep queue valid when counter team changes
+    // NOTE: During initial hydration, counterTeam may be temporarily empty even
+    // when editing an existing post. Avoid wiping the hydrated queue in that case.
+    if (counterTeam.length === 0) return;
     const allowed = new Set(counterTeam.map((h) => h.id));
     setSkillQueue((prev) => prev.filter((x) => allowed.has(x.heroId)));
   }, [counterTeam]);
