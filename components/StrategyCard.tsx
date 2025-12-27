@@ -233,7 +233,7 @@ const StrategyCard: React.FC<Props> = ({
   };
 
   const EnemySquadHeader: React.FC = () => (
-    <div className="bg-slate-900/60 glass px-8 py-6 border-b border-white/10 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+    <div className="bg-slate-900/60 glass px-8 py-6 border-b border-white/10 grid grid-cols-2 gap-4 md:flex md:flex-row md:items-center md:gap-8 relative overflow-hidden">
       {/* Background Decor */}
       <div
         className={`absolute -right-8 -top-8 w-32 h-32 blur-3xl opacity-20 bg-gradient-to-br ${getTierColor(
@@ -242,7 +242,7 @@ const StrategyCard: React.FC<Props> = ({
       ></div>
 
       {/* Squad Votes with Up/Down Buttons */}
-      <div className="flex flex-col items-center gap-2">
+      <div className="order-2 md:order-none col-span-1 flex flex-col items-center gap-2">
         <div
           className={`text-[10px] font-black uppercase tracking-[0.3em] ${
             squadVotes >= 0 ? "text-emerald-500" : "text-rose-500"
@@ -250,7 +250,7 @@ const StrategyCard: React.FC<Props> = ({
         >
           Squad Rating
         </div>
-        <div className="flex flex-col items-center gap-1 bg-slate-900/60 glass py-3 px-4 rounded-xl border border-white/10 shadow-lg">
+        <div className="flex flex-row md:flex-col items-center justify-center gap-3 md:gap-1 bg-slate-900/60 glass py-2 md:py-3 px-3 md:px-4 rounded-xl border border-white/10 shadow-lg w-full">
           <button
             onClick={() => onSquadVote("up")}
             className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"
@@ -283,17 +283,17 @@ const StrategyCard: React.FC<Props> = ({
             </svg>
           </button>
         </div>
-        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">
+        <div className="hidden sm:block text-[8px] font-bold text-slate-500 uppercase tracking-wider">
           {logs.length} {logs.length === 1 ? "report" : "reports"}
         </div>
-        <div className="text-[8px] font-bold text-slate-600 uppercase tracking-wider mt-1">
+        <div className="text-[8px] font-bold text-slate-600 uppercase tracking-wider mt-1 whitespace-nowrap">
           {successLogs.length}{" "}
           {successLogs.length === 1 ? "counter" : "counters"} •{" "}
           {failLogs.length} {failLogs.length === 1 ? "fail" : "fails"}
         </div>
       </div>
 
-      <div className="flex flex-col items-center">
+      <div className="order-3 md:order-none col-span-1 flex flex-col items-center">
         <div
           className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 text-slate-500`}
         >
@@ -309,11 +309,11 @@ const StrategyCard: React.FC<Props> = ({
       </div>
 
       {/* Share / Export */}
-      <div className="flex flex-col items-center gap-2">
+      <div className="order-4 md:order-none col-span-2 md:col-span-1 flex flex-row md:flex-col items-center justify-center gap-3 md:gap-2">
         <button
           type="button"
           onClick={() => handleCopySquadLink()}
-          className="px-4 py-2 bg-slate-900/40 glass hover:bg-slate-900/55 text-slate-200 rounded-xl text-[10px] font-black transition-all border border-white/10 uppercase tracking-widest"
+          className="w-full md:w-auto px-4 py-2 bg-slate-900/40 glass hover:bg-slate-900/55 text-slate-200 rounded-xl text-[10px] font-black transition-all border border-white/10 uppercase tracking-widest"
           title="Copy share link"
         >
           {copied ? "COPIED" : "COPY LINK"}
@@ -322,14 +322,14 @@ const StrategyCard: React.FC<Props> = ({
           type="button"
           onClick={handleExportPng}
           disabled={exporting}
-          className="px-4 py-2 bg-slate-900/40 glass hover:bg-slate-900/55 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 rounded-xl text-[10px] font-black transition-all border border-white/10 uppercase tracking-widest"
+          className="w-full md:w-auto px-4 py-2 bg-slate-900/40 glass hover:bg-slate-900/55 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 rounded-xl text-[10px] font-black transition-all border border-white/10 uppercase tracking-widest"
           title="Export this squad card as PNG"
         >
           {exporting ? "EXPORTING" : "EXPORT PNG"}
         </button>
       </div>
 
-      <div className="flex-1">
+      <div className="order-1 md:order-none col-span-2 md:col-span-1 flex-1">
         {/* Mobile: keep 3 icons on a single row */}
         <div className="md:hidden flex items-center justify-center gap-2 flex-nowrap">
           {enemyIds.slice(0, 3).map((id, index) => {
@@ -350,7 +350,7 @@ const StrategyCard: React.FC<Props> = ({
                 <HeroHoverCard hero={hero}>
                   <div className="relative" tabIndex={0}>
                     <div
-                      className={`w-14 h-14 rounded-full bg-slate-950/25 glass border-2 overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hero-portrait-wrap ${
+                      className={`w-16 h-16 rounded-full bg-slate-950/25 glass border-2 overflow-hidden flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.35)] hero-portrait-wrap ${
                         hero.attackType === "Magic"
                           ? "border-blue-500/50"
                           : "border-orange-500/50"
@@ -568,7 +568,7 @@ const StrategyCard: React.FC<Props> = ({
         }`}
       >
         <div className="flex flex-col sm:flex-row justify-between items-start gap-6">
-          <div className="flex items-start gap-5 flex-1">
+          <div className="flex items-start gap-5 flex-1 min-w-0">
             {/* Desktop: stacked hero icons */}
             <div className="hidden md:flex flex-col gap-2">
               {log.counterTeam.slice(0, 3).map((id, index) => {
@@ -769,7 +769,7 @@ const StrategyCard: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1 w-full sm:w-auto min-w-[48px] bg-slate-900/80 glass py-2 rounded-xl border border-white/10">
+          <div className="shrink-0 flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1 w-full sm:w-auto min-w-[56px] bg-slate-900/80 glass py-2 rounded-xl border border-white/10">
             <button
               onClick={() => onVote(log.id, "up")}
               className="text-slate-500 hover:text-emerald-400 transition-all transform hover:scale-125 active:scale-95"

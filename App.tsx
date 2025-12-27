@@ -1687,7 +1687,7 @@ const App: React.FC = () => {
               <div className={cardView ? "" : "space-y-12"}>
                 {groupedLogs.length > 0 ? (
                   cardView ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
                       {groupedLogs.map(([key, logs]) => {
                         // Find the first (oldest) log for this squad to get the creator
                         const firstLog = logs.reduce((oldest, log) =>
@@ -1706,6 +1706,40 @@ const App: React.FC = () => {
                           .map((id) => getHero(id))
                           .filter(Boolean) as Hero[];
 
+                        const tierWeights: Record<string, number> = {
+                          OP: 9,
+                          SSS: 8,
+                          SS: 7,
+                          "S+": 6,
+                          S: 5,
+                          "A+": 4,
+                          A: 3,
+                          B: 2,
+                          C: 1,
+                          D: 0,
+                        };
+
+                        const overallTier = enemyHeroes.reduce((max, hero) => {
+                          const heroTier = hero?.tier;
+                          if (!heroTier) return max;
+                          return (tierWeights[heroTier] ?? 0) >
+                            (tierWeights[max] ?? 0)
+                            ? heroTier
+                            : max;
+                        }, "D");
+
+                        const getTierPillClass = (tier: string) => {
+                          if (tier.includes("OP"))
+                            return "bg-fuchsia-500/10 text-fuchsia-200 border-fuchsia-500/20";
+                          if (tier.includes("SSS"))
+                            return "bg-yellow-500/10 text-yellow-200 border-yellow-500/20";
+                          if (tier.includes("SS"))
+                            return "bg-purple-500/10 text-purple-200 border-purple-500/20";
+                          if (tier.includes("S"))
+                            return "bg-blue-500/10 text-blue-200 border-blue-500/20";
+                          return "bg-slate-800/40 text-slate-200 border-white/10";
+                        };
+
                         return (
                           <button
                             key={key}
@@ -1716,7 +1750,7 @@ const App: React.FC = () => {
                             className="text-left bg-slate-900/60 glass bg-grain rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl hover:border-white/20 transition-colors p-5 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                             title="Open squad details"
                           >
-                            <div className="flex items-start justify-between gap-3">
+                            <div className="relative">
                               <div className="flex items-start justify-center gap-3">
                                 {enemyIds.slice(0, 3).map((id) => {
                                   const hero = getHero(id);
@@ -1753,7 +1787,7 @@ const App: React.FC = () => {
                               </div>
 
                               <div
-                                className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black border ${
+                                className={`absolute right-0 top-0 px-2.5 py-1 rounded-lg text-[10px] font-black border ${
                                   rating >= 0
                                     ? "bg-emerald-500/10 text-emerald-200 border-emerald-500/20"
                                     : "bg-rose-500/10 text-rose-200 border-rose-500/20"
@@ -1765,15 +1799,20 @@ const App: React.FC = () => {
                               </div>
                             </div>
 
-                            <div className="mt-4 flex flex-wrap gap-2 pt-2 border-t border-white/10">
-                              <div className="px-2.5 py-1 rounded-lg text-[10px] font-black border bg-emerald-500/10 text-emerald-200 border-emerald-500/20">
-                                Counters: {countersTotal}
+                            <div className="mt-4 grid grid-cols-3 gap-2 pt-2 border-t border-white/10">
+                              <div className="px-2 py-1 rounded-lg text-[10px] font-black border bg-emerald-500/10 text-emerald-200 border-emerald-500/20 whitespace-nowrap text-center">
+                                Counters {countersTotal}
                               </div>
-                              <div className="px-2.5 py-1 rounded-lg text-[10px] font-black border bg-rose-500/10 text-rose-200 border-rose-500/20">
-                                Fails: {failsTotal}
+                              <div className="px-2 py-1 rounded-lg text-[10px] font-black border bg-rose-500/10 text-rose-200 border-rose-500/20 whitespace-nowrap text-center">
+                                Fails {failsTotal}
                               </div>
-                              <div className="px-2.5 py-1 rounded-lg text-[10px] font-black border bg-slate-800/40 text-slate-200 border-white/10">
-                                Reports: {logs.length}
+                              <div
+                                className={`px-2 py-1 rounded-lg text-[10px] font-black border whitespace-nowrap text-center ${getTierPillClass(
+                                  overallTier
+                                )}`}
+                                title="Threat tier"
+                              >
+                                Tier {overallTier}
                               </div>
                             </div>
                           </button>
