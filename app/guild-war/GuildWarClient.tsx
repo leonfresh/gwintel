@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import AuthModal from "@/components/AuthModal";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browserClient";
 import { War, WarPerformance } from "@/types";
@@ -30,7 +31,7 @@ export default function GuildWarClient() {
 
   const supabase = getSupabaseBrowserClient();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!supabase) return;
     const {
       data: { user },
@@ -48,7 +49,9 @@ export default function GuildWarClient() {
     const allowedEditors = new Set(["Icewind", "UnknownSnow"]);
     const ok = Boolean(ingameName && allowedEditors.has(ingameName));
     setCanEdit(ok);
-    if (!ok && activeTab === "input") setActiveTab("history");
+    if (!ok) {
+      setActiveTab((prev) => (prev === "input" ? "history" : prev));
+    }
 
     const { data: warsData } = await supabase
       .from("wars")
@@ -61,11 +64,11 @@ export default function GuildWarClient() {
       setAllPerformances(perfData);
       setStats(calculateStats(perfData));
     }
-  };
+  }, [supabase]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleSignOut = async () => {
     if (!supabase) return;
@@ -236,7 +239,7 @@ export default function GuildWarClient() {
       {/* Navbar (matches main site) */}
       <nav className="border-b border-white/10 bg-slate-950/35 glass sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600/90 rounded-xl flex items-center justify-center shadow-lg rotate-3">
               <svg
                 className="w-6 h-6 text-white"
@@ -260,10 +263,10 @@ export default function GuildWarClient() {
                 Seven Knights Intelligence
               </p>
             </div>
-          </a>
+          </Link>
 
           <div className="flex items-center gap-3">
-            <a
+            <Link
               href="/counter-quiz"
               className="px-4 py-2 bg-slate-900/30 glass hover:bg-slate-900/45 text-slate-200 hover:text-white font-bold text-sm rounded-xl border border-white/10 transition-all flex items-center gap-2"
             >
@@ -282,9 +285,9 @@ export default function GuildWarClient() {
               </svg>
               <span className="hidden sm:inline">Counter Quiz</span>
               <span className="sm:hidden">Quiz</span>
-            </a>
+            </Link>
 
-            <a
+            <Link
               href="/guild-war"
               className="px-4 py-2 bg-blue-500/15 glass border border-blue-500/25 text-blue-200 font-bold text-sm rounded-xl transition-all flex items-center gap-2"
             >
@@ -303,7 +306,7 @@ export default function GuildWarClient() {
               </svg>
               <span className="hidden sm:inline">Guild War</span>
               <span className="sm:hidden">GW</span>
-            </a>
+            </Link>
 
             {authEmail ? (
               <>
