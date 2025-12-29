@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { toPng } from "html-to-image";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import AuthModal from "@/components/AuthModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browserClient";
@@ -41,6 +42,9 @@ export default function GuildWarClient() {
   const [memberToDelete, setMemberToDelete] = useState<MemberStats | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deletingMember, setDeletingMember] = useState(false);
+
+  const statsExportRef = useRef<HTMLDivElement | null>(null);
+  const [exportingStatsPng, setExportingStatsPng] = useState(false);
 
   const supabase = getSupabaseBrowserClient();
 
@@ -564,11 +568,11 @@ export default function GuildWarClient() {
               <div className="grid grid-cols-3 gap-2 text-center text-xs border-t border-white/10 pt-2">
                  <div>
                     <div className="text-gray-400">Record</div>
-                    <div className="font-bold text-white">{s.total_wins}W - {s.total_losses}L</div>
+                    <div className="text-lg md:text-xl font-black font-mono tracking-tight text-white">{s.total_wins}-{s.total_losses}</div>
                  </div>
                  <div>
                     <div className="text-gray-400">Def Wins</div>
-                    <div className="font-bold text-blue-400">{s.total_def_wins}</div>
+                    <div className="text-lg md:text-xl font-black font-mono tracking-tight text-sky-300">{s.total_def_wins}</div>
                  </div>
                  <div>
                     <div className="text-gray-400">Wars</div>
@@ -967,10 +971,7 @@ export default function GuildWarClient() {
                               Member
                             </th>
                             <th className="p-4 font-bold uppercase text-xs tracking-wider">
-                              Wins
-                            </th>
-                            <th className="p-4 font-bold uppercase text-xs tracking-wider">
-                              Losses
+                              Record
                             </th>
                             <th className="p-4 font-bold uppercase text-xs tracking-wider">
                               Def Wins
@@ -981,14 +982,35 @@ export default function GuildWarClient() {
                           {selectedWarPerformances.map((p) => (
                             <tr key={p.id} className="hover:bg-white/5 transition-colors">
                               <td className="p-4 font-bold text-white">{p.member_name}</td>
-                              <td className="p-4 text-green-400 font-mono font-bold">
-                                {p.wins}
+                              <td className="p-4">
+                                {(() => {
+                                  const attacks = p.wins + p.losses;
+                                  const wr = attacks > 0 ? (p.wins / attacks) * 100 : 0;
+                                  return (
+                                    <div className="flex flex-col">
+                                      <div
+                                        className={`text-2xl md:text-3xl font-black font-mono tracking-tight ${winRateColor(
+                                          wr
+                                        )}`}
+                                      >
+                                        {p.wins}-{p.losses}
+                                      </div>
+                                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                        Attack Record
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </td>
-                              <td className="p-4 text-red-400 font-mono font-bold">
-                                {p.losses}
-                              </td>
-                              <td className="p-4 text-blue-400 font-mono font-bold">
-                                {p.defense_wins}
+                              <td className="p-4">
+                                <div className="flex flex-col">
+                                  <div className="text-2xl md:text-3xl font-black font-mono tracking-tight text-sky-300">
+                                    {p.defense_wins}
+                                  </div>
+                                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Def Wins
+                                  </div>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -1061,15 +1083,46 @@ export default function GuildWarClient() {
           )}
 
           {activeTab === "leaders" && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-10">
-              <div className="text-center">
-                <h2 className="text-4xl md:text-5xl font-black text-white italic uppercase tracking-tight mb-2">
-                  Guild War <span className="text-yellow-500">Stats</span>
-                </h2>
-                <p className="text-slate-400 font-semibold">
-                  High-signal rankings across all wars (attack, defense, consistency)
-                </p>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!statsExportRef.current) return;
+                    setExportingStatsPng(true);
+                    try {
+                      const dataUrl = await toPng(statsExportRef.current, {
+                        cacheBust: true,
+                        pixelRatio: 2,
+                      });
+                      const a = document.createElement("a");
+                      a.href = dataUrl;
+                      a.download = `guild-war-stats-${new Date().toISOString().slice(0, 10)}.png`;
+                      a.click();
+                    } catch (e) {
+                      console.error("Failed to export stats PNG", e);
+                      alert("Failed to export PNG.");
+                    } finally {
+                      setExportingStatsPng(false);
+                    }
+                  }}
+                  disabled={exportingStatsPng}
+                  className="px-4 py-2 bg-slate-900/35 glass hover:bg-slate-900/55 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 hover:text-white font-black text-xs rounded-xl border border-white/10 transition-all uppercase tracking-widest"
+                  title="Download a PNG of the full Stats page"
+                >
+                  {exportingStatsPng ? "EXPORTING PNG" : "DOWNLOAD PNG"}
+                </button>
               </div>
+
+              <div ref={statsExportRef} className="space-y-10">
+                <div className="text-center">
+                  <h2 className="text-4xl md:text-5xl font-black text-white italic uppercase tracking-tight mb-2">
+                    Guild War <span className="text-yellow-500">Stats</span>
+                  </h2>
+                  <p className="text-slate-400 font-semibold">
+                    High-signal rankings across all wars (attack, defense, consistency)
+                  </p>
+                </div>
 
               {(() => {
                 const totals = allPerformances.reduce(
@@ -1111,6 +1164,21 @@ export default function GuildWarClient() {
                     return { ...s, _score: score } as MemberStats & { _score: number };
                   })
                   .sort((a, b) => b._score - a._score);
+
+                const byAntiMvp = [...byMvp].slice().sort((a, b) => a._score - b._score);
+
+                const attacksFor = (s: MemberStats) => s.total_wins + s.total_losses;
+                const intKingCandidate = [...stats]
+                  .filter((s) => attacksFor(s) >= 10)
+                  .sort((a, b) => b.total_losses - a.total_losses || a.win_rate - b.win_rate || attacksFor(b) - attacksFor(a));
+                const intKing = intKingCandidate[0] ?? [...stats].sort((a, b) => b.total_losses - a.total_losses)[0];
+
+                const lossMagnetCandidate = [...stats]
+                  .filter((s) => attacksFor(s) >= 10)
+                  .sort((a, b) => b.total_losses - a.total_losses || attacksFor(b) - attacksFor(a));
+                const lossMagnet = lossMagnetCandidate[0] ?? intKing;
+
+                const openGateEmperor = openGates[0];
 
                 const perfect = [...stats]
                   .filter((s) => s.win_rate === 100 && s.total_wins >= 5)
@@ -1276,6 +1344,20 @@ export default function GuildWarClient() {
                       )}
 
                       {renderTopList(
+                        "Worst MVP Score",
+                        "Opposite of MVP (lowest score overall)",
+                        byAntiMvp.map((s) => {
+                          const score = (s as MemberStats & { _score: number })._score;
+                          return {
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${s.total_wins}W • ${s.total_def_wins} DW • ${s.total_losses}L`,
+                            right: <span className="text-rose-300">{score}</span>,
+                          };
+                        })
+                      )}
+
+                      {renderTopList(
                         "Needs Training",
                         "Worst win rate (min 10 attacks)",
                         byWorstWinRate.map((s) => ({
@@ -1345,9 +1427,170 @@ export default function GuildWarClient() {
                         </div>
                       </div>
                     ) : null}
+
+                    {stats.length > 0 ? (
+                      <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
+                        <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
+                          Hall of <span className="text-emerald-400">Fame</span>
+                        </h3>
+                        <p className="text-slate-400 font-semibold mt-1">
+                          Crowned from your best overall performers
+                        </p>
+
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/12 to-slate-950/10 p-5">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300">MVP</div>
+                            <div className="mt-1 text-xl font-black text-white truncate">{byMvp[0]?.member_name ?? "—"}</div>
+                            {byMvp[0] ? (
+                              <div className="mt-2 text-xs font-bold text-slate-300">
+                                <span className="text-slate-400">Score:</span>{" "}
+                                <span className="text-emerald-200">{(byMvp[0] as MemberStats & { _score: number })._score}</span>
+                              </div>
+                            ) : null}
+                            <div className="mt-3 text-sm font-black text-emerald-100">
+                              {byMvp[0]
+                                ? `${byMvp[0].total_wins}W • ${byMvp[0].total_losses}L • ${byMvp[0].total_def_wins} DW`
+                                : "No data"}
+                            </div>
+                          </div>
+
+                          <div className="relative overflow-hidden rounded-2xl border border-sky-500/25 bg-gradient-to-br from-sky-500/12 to-slate-950/10 p-5">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-sky-200">Attack King</div>
+                            <div className="mt-1 text-xl font-black text-white truncate">{byWins[0]?.member_name ?? "—"}</div>
+                            {byWins[0] ? (
+                              <div className="mt-2 text-xs font-bold text-slate-300">
+                                <span className="text-slate-400">Wins:</span> {byWins[0].total_wins} •{" "}
+                                <span className={winRateColor(byWins[0].win_rate)}>{byWins[0].win_rate.toFixed(0)}% WR</span>
+                              </div>
+                            ) : null}
+                            <div className="mt-3 text-sm font-black text-sky-100">
+                              {byWins[0] ? `${byWins[0].total_wins}-${byWins[0].total_losses} record` : "No data"}
+                            </div>
+                          </div>
+
+                          <div className="relative overflow-hidden rounded-2xl border border-teal-500/25 bg-gradient-to-br from-teal-500/12 to-slate-950/10 p-5">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-teal-200">Fortress</div>
+                            <div className="mt-1 text-xl font-black text-white truncate">{byDef[0]?.member_name ?? "—"}</div>
+                            {byDef[0] ? (
+                              <div className="mt-2 text-xs font-bold text-slate-300">
+                                <span className="text-slate-400">Def Wins:</span> {byDef[0].total_def_wins} •{" "}
+                                <span className="text-slate-400">Avg:</span> {byDef[0].avg_def_wins.toFixed(1)}
+                              </div>
+                            ) : null}
+                            <div className="mt-3 text-sm font-black text-teal-100">
+                              {byDef[0] ? `${byDef[0].total_wars} wars recorded` : "No data"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sharpshooter</div>
+                            <div className="mt-1 font-black text-white">
+                              {byWinRate[0]?.member_name ?? "—"}{" "}
+                              {byWinRate[0] ? (
+                                <span className={winRateColor(byWinRate[0].win_rate)}>
+                                  {byWinRate[0].win_rate.toFixed(0)}% WR
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="text-xs font-bold text-slate-400 mt-1">
+                              {byWinRate[0]
+                                ? `${byWinRate[0].total_wins}-${byWinRate[0].total_losses} record (min 10 attacks)`
+                                : "Not enough data yet."}
+                            </div>
+                          </div>
+
+                          <div className="px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Iron Wall</div>
+                            <div className="mt-1 font-black text-white">
+                              {byAvgDef[0]?.member_name ?? "—"}{" "}
+                              {byAvgDef[0] ? (
+                                <span className="text-sky-300">
+                                  {byAvgDef[0].avg_def_wins.toFixed(1)} avg DW
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="text-xs font-bold text-slate-400 mt-1">
+                              {byAvgDef[0]
+                                ? `${byAvgDef[0].total_def_wins} total DW (min 3 wars)`
+                                : "Not enough data yet."}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {stats.length > 0 ? (
+                      <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
+                        <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
+                          Hall of <span className="text-rose-400">Shame</span>
+                        </h3>
+                        <p className="text-slate-400 font-semibold mt-1">
+                          Fun titles for the most painful stats (min 10 attacks where applicable)
+                        </p>
+
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="relative overflow-hidden rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-500/10 to-slate-950/10 p-5">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-rose-300">Int King</div>
+                            <div className="mt-1 text-xl font-black text-white truncate">{intKing?.member_name ?? "—"}</div>
+                            {intKing ? (
+                              <div className="mt-2 text-xs font-bold text-slate-300">
+                                <span className="text-slate-400">Record:</span> {intKing.total_wins}-{intKing.total_losses} •{" "}
+                                <span className={winRateColor(intKing.win_rate)}>{intKing.win_rate.toFixed(0)}% WR</span>
+                              </div>
+                            ) : null}
+                            <div className="mt-3 text-sm font-black text-rose-200">
+                              {intKing ? `${intKing.total_losses} failed attacks` : "No data"}
+                            </div>
+                          </div>
+
+                          <div className="relative overflow-hidden rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-500/10 to-slate-950/10 p-5">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-orange-200">Loss Magnet</div>
+                            <div className="mt-1 text-xl font-black text-white truncate">{lossMagnet?.member_name ?? "—"}</div>
+                            {lossMagnet ? (
+                              <div className="mt-2 text-xs font-bold text-slate-300">
+                                <span className="text-slate-400">Attacks:</span> {attacksFor(lossMagnet)} •{" "}
+                                <span className="text-slate-400">Losses:</span> {lossMagnet.total_losses}
+                              </div>
+                            ) : null}
+                            <div className="mt-3 text-sm font-black text-orange-100">
+                              {lossMagnet ? `Net pain: -${lossMagnet.total_losses - lossMagnet.total_wins}` : "No data"}
+                            </div>
+                          </div>
+
+                          <div className="relative overflow-hidden rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-slate-950/10 p-5">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-yellow-200">Anti-MVP</div>
+                            <div className="mt-1 text-xl font-black text-white truncate">{byAntiMvp[0]?.member_name ?? "—"}</div>
+                            {byAntiMvp[0] ? (
+                              <div className="mt-2 text-xs font-bold text-slate-300">
+                                <span className="text-slate-400">MVP Score:</span>{" "}
+                                <span className="text-rose-300">{(byAntiMvp[0] as MemberStats & { _score: number })._score}</span>
+                              </div>
+                            ) : null}
+                            <div className="mt-3 text-sm font-black text-yellow-100">
+                              {byAntiMvp[0]
+                                ? `${byAntiMvp[0].total_wins}W • ${byAntiMvp[0].total_losses}L • ${byAntiMvp[0].total_def_wins} DW`
+                                : "No data"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {openGateEmperor ? (
+                          <div className="mt-4 px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bonus Title</div>
+                            <div className="mt-1 font-black text-white">
+                              Open Gate Emperor: <span className="text-orange-200">{openGateEmperor.member_name}</span>
+                            </div>
+                            <div className="text-xs font-bold text-slate-400 mt-1">0 defense wins across {openGateEmperor.total_wars} wars</div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </>
                 );
               })()}
+              </div>
             </div>
           )}
 
