@@ -251,7 +251,13 @@ export default function GuildWarClient() {
   useEffect(() => {
     const tabParam = searchParams.get("tab");
     if (tabParam) {
-      const validTabs: Tab[] = ["input", "history", "stats", "leaders", "admin"];
+      const validTabs: Tab[] = [
+        "input",
+        "history",
+        "stats",
+        "leaders",
+        "admin",
+      ];
       if (validTabs.includes(tabParam as Tab)) {
         setActiveTab(tabParam as Tab);
       }
@@ -272,7 +278,14 @@ export default function GuildWarClient() {
         setActiveTab("history");
       }
     }
-  }, [searchParams, wars, selectedWar, allPerformances]);
+  }, [
+    searchParams,
+    wars,
+    selectedWar,
+    allPerformances,
+    aggregateWarPerformances,
+    makeWarTiersMoreGenerous,
+  ]);
 
   const fetchData = useCallback(async () => {
     if (!supabase) return;
@@ -980,7 +993,9 @@ export default function GuildWarClient() {
                   if (key !== "history") {
                     params.delete("war");
                   }
-                  router.push(`/guild-war?${params.toString()}`, { scroll: false });
+                  router.push(`/guild-war?${params.toString()}`, {
+                    scroll: false,
+                  });
                 }}
                 className={`px-8 py-4 font-black text-sm uppercase tracking-wider transition-all relative ${
                   activeTab === key
@@ -1120,10 +1135,17 @@ export default function GuildWarClient() {
                     <button
                       onClick={() => {
                         setSelectedWar(null);
-                        const params = new URLSearchParams(searchParams.toString());
+                        const params = new URLSearchParams(
+                          searchParams.toString()
+                        );
                         params.delete("war");
                         const paramString = params.toString();
-                        router.push(paramString ? `/guild-war?${paramString}` : "/guild-war", { scroll: false });
+                        router.push(
+                          paramString
+                            ? `/guild-war?${paramString}`
+                            : "/guild-war",
+                          { scroll: false }
+                        );
                       }}
                       className="flex items-center gap-2 text-yellow-500 hover:text-yellow-400 font-bold transition-colors"
                     >
@@ -1685,7 +1707,8 @@ export default function GuildWarClient() {
                     .map((s) => ({
                       ...s,
                       _deadWeightScore:
-                        (s as any)._score - s.participation_rate,
+                        (s as MemberStats & { _score: number })._score -
+                        s.participation_rate,
                     }))
                     .sort((a, b) => a._deadWeightScore - b._deadWeightScore)[0];
 
@@ -2389,7 +2412,14 @@ export default function GuildWarClient() {
                               {deadWeight ? (
                                 <div className="mt-2 text-xs font-bold text-slate-300">
                                   <span className="text-rose-300">
-                                    Score: {(deadWeight as any)._score}
+                                    Score:{" "}
+                                    {
+                                      (
+                                        deadWeight as MemberStats & {
+                                          _score: number;
+                                        }
+                                      )._score
+                                    }
                                   </span>
                                   {" • "}
                                   <span className="text-orange-300">
