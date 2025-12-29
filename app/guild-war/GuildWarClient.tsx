@@ -16,7 +16,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browserClient";
 import { War, WarPerformance } from "@/types";
 import { calculateStats, MemberStats } from "./utils";
 
-type Tab = "input" | "history" | "stats" | "leaders" | "admin";
+type Tab = "input" | "reports" | "all-reports" | "stats" | "admin";
 
 const ADMIN_INGAME_NAMES = new Set(["Icewind", "UnknownSnow"]);
 
@@ -24,7 +24,7 @@ export default function GuildWarClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<Tab>("history");
+  const [activeTab, setActiveTab] = useState<Tab>("reports");
   const [loading, setLoading] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
@@ -253,19 +253,47 @@ export default function GuildWarClient() {
   // Handle URL-based tab selection
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam) {
-      const validTabs: Tab[] = [
-        "input",
-        "history",
-        "stats",
-        "leaders",
-        "admin",
-      ];
-      if (validTabs.includes(tabParam as Tab)) {
-        setActiveTab(tabParam as Tab);
+
+    // Back-compat:
+    // - legacy boolean params: ?leaders -> tab=stats, ?stats -> tab=all-reports
+    // - legacy tab values: tab=history -> tab=reports, tab=leaders -> tab=stats
+    const normalizeTab = (raw: string | null): Tab | null => {
+      if (!raw) return null;
+      if (raw === "history") return "reports";
+      if (raw === "leaders") return "stats";
+
+      const validTabs: Tab[] = ["input", "reports", "all-reports", "stats", "admin"];
+      return validTabs.includes(raw as Tab) ? (raw as Tab) : null;
+    };
+
+    let normalized: Tab | null = normalizeTab(tabParam);
+    let shouldRewriteUrl = false;
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (!normalized) {
+      // legacy boolean params (?leaders, ?stats)
+      if (searchParams.has("leaders")) {
+        normalized = "stats";
+        shouldRewriteUrl = true;
+        params.delete("leaders");
+      } else if (searchParams.has("stats")) {
+        normalized = "all-reports";
+        shouldRewriteUrl = true;
+        params.delete("stats");
+      }
+    } else if (tabParam && normalized !== tabParam) {
+      // legacy tab value -> rewrite
+      shouldRewriteUrl = true;
+    }
+
+    if (normalized) {
+      setActiveTab(normalized);
+      if (shouldRewriteUrl) {
+        params.set("tab", normalized);
+        router.replace(`/guild-war?${params.toString()}`, { scroll: false });
       }
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   // Handle URL-based war selection
   useEffect(() => {
@@ -278,7 +306,7 @@ export default function GuildWarClient() {
         const perfs = aggregateWarPerformances(war.id, perfsRaw);
         setSelectedWarPerformances(perfs);
         setSelectedWarStats(makeWarTiersMoreGenerous(calculateStats(perfs)));
-        setActiveTab("history");
+        setActiveTab("reports");
       }
     }
   }, [
@@ -311,7 +339,7 @@ export default function GuildWarClient() {
       Boolean(ingameName && ADMIN_INGAME_NAMES.has(ingameName));
     setCanEdit(ok);
     if (!ok) {
-      setActiveTab((prev) => (prev === "input" ? "history" : prev));
+      setActiveTab((prev) => (prev === "input" ? "reports" : prev));
     }
 
     const { data: warsData } = await supabase
@@ -341,7 +369,7 @@ export default function GuildWarClient() {
     setAuthIngameName(null);
     const ok = isLocalDevHost();
     setCanEdit(ok);
-    setActiveTab("history");
+    setActiveTab("reports");
   };
 
   const parseWarText = (
@@ -439,7 +467,7 @@ export default function GuildWarClient() {
     setEditParseResult(null);
     const params = new URLSearchParams(searchParams.toString());
     params.set("war", war.id);
-    params.set("tab", "history");
+    params.set("tab", "reports");
     router.push(`/guild-war?${params.toString()}`, { scroll: false });
   };
 
@@ -480,7 +508,7 @@ export default function GuildWarClient() {
       setCsvInput("");
       setParseResult(null);
       fetchData(); // Refresh data
-      setActiveTab("history");
+      setActiveTab("reports");
     } catch (error) {
       console.error("Error saving data:", error);
       alert("Failed to save data.");
@@ -971,9 +999,9 @@ export default function GuildWarClient() {
         <div className="flex gap-4 border-b-2 border-slate-700/50 mb-8">
           {(
             [
-              { key: "history" as const, label: "Reports" },
-              { key: "stats" as const, label: "Overall Report" },
-              { key: "leaders" as const, label: "Stats" },
+              { key: "reports" as const, label: "Reports" },
+              { key: "all-reports" as const, label: "Overall Report" },
+              { key: "stats" as const, label: "Stats" },
               { key: "input" as const, label: "Input", requiresEdit: true },
               {
                 key: "admin" as const,
@@ -995,7 +1023,7 @@ export default function GuildWarClient() {
                   const params = new URLSearchParams(searchParams.toString());
                   params.set("tab", key);
                   // Clear war param when switching tabs (except for history)
-                  if (key !== "history") {
+                  if (key !== "reports") {
                     params.delete("war");
                   }
                   router.push(`/guild-war?${params.toString()}`, {
@@ -1132,7 +1160,7 @@ export default function GuildWarClient() {
             </div>
           )}
 
-          {activeTab === "history" && (
+          {activeTab === "reports" && (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {selectedWar ? (
                 <div>
@@ -1452,7 +1480,7 @@ export default function GuildWarClient() {
             </div>
           )}
 
-          {activeTab === "stats" && (
+          {activeTab === "all-reports" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex justify-center mb-6">
                 <button
@@ -1508,7 +1536,7 @@ export default function GuildWarClient() {
             </div>
           )}
 
-          {activeTab === "leaders" && (
+          {activeTab === "stats" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
               <div className="flex justify-center">
                 <button
