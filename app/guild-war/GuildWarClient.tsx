@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { toPng } from "html-to-image";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import AuthModal from "@/components/AuthModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browserClient";
@@ -29,7 +35,9 @@ export default function GuildWarClient() {
   const [stats, setStats] = useState<MemberStats[]>([]);
 
   const [selectedWar, setSelectedWar] = useState<War | null>(null);
-  const [selectedWarPerformances, setSelectedWarPerformances] = useState<WarPerformance[]>([]);
+  const [selectedWarPerformances, setSelectedWarPerformances] = useState<
+    WarPerformance[]
+  >([]);
   const [selectedWarStats, setSelectedWarStats] = useState<MemberStats[]>([]);
   const [isEditingWar, setIsEditingWar] = useState(false);
   const [editText, setEditText] = useState("");
@@ -39,17 +47,27 @@ export default function GuildWarClient() {
   } | null>(null);
   const [canEdit, setCanEdit] = useState(false);
 
-  const [memberToDelete, setMemberToDelete] = useState<MemberStats | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<MemberStats | null>(
+    null
+  );
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deletingMember, setDeletingMember] = useState(false);
 
   const statsExportRef = useRef<HTMLDivElement | null>(null);
   const [exportingStatsPng, setExportingStatsPng] = useState(false);
 
+  const overallExportRef = useRef<HTMLDivElement | null>(null);
+  const [exportingOverallPng, setExportingOverallPng] = useState(false);
+
+  const reportExportRef = useRef<HTMLDivElement | null>(null);
+  const [exportingReportPng, setExportingReportPng] = useState(false);
+
   const supabase = getSupabaseBrowserClient();
 
-  const normalizeMemberDisplayName = (name: string) => name.trim().replace(/\s+/g, " ");
-  const memberKey = (name: string) => normalizeMemberDisplayName(name).toLowerCase();
+  const normalizeMemberDisplayName = (name: string) =>
+    name.trim().replace(/\s+/g, " ");
+  const memberKey = (name: string) =>
+    normalizeMemberDisplayName(name).toLowerCase();
 
   const winRateColor = (wr: number) => {
     if (wr >= 85) return "text-emerald-400";
@@ -60,14 +78,80 @@ export default function GuildWarClient() {
     return "text-rose-400";
   };
 
+  const safeFilenamePart = (s: string) =>
+    s
+      .trim()
+      .replaceAll("/", "-")
+      .replaceAll("\\", "-")
+      .replaceAll(":", "-")
+      .replaceAll("*", "")
+      .replaceAll("?", "")
+      .replaceAll('"', "")
+      .replaceAll("<", "")
+      .replaceAll(">", "")
+      .replaceAll("|", "-")
+      .replaceAll(" ", "-");
+
+  const exportElementAsPng = async (opts: {
+    el: HTMLElement | null;
+    filename: string;
+    expandScrollable?: boolean;
+  }) => {
+    const { el, filename, expandScrollable } = opts;
+    if (!el) return;
+
+    const expanded: Array<{
+      node: HTMLElement;
+      maxHeight: string;
+      overflow: string;
+    }> = [];
+    try {
+      if (expandScrollable) {
+        const nodes = Array.from(
+          el.querySelectorAll<HTMLElement>("[data-export-expand='true']")
+        );
+        nodes.forEach((node) => {
+          expanded.push({
+            node,
+            maxHeight: node.style.maxHeight,
+            overflow: node.style.overflow,
+          });
+          node.style.maxHeight = "none";
+          node.style.overflow = "visible";
+        });
+      }
+
+      const dataUrl = await toPng(el, {
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = filename;
+      a.click();
+    } finally {
+      expanded.forEach((x) => {
+        x.node.style.maxHeight = x.maxHeight;
+        x.node.style.overflow = x.overflow;
+      });
+    }
+  };
+
   const pickMostCommonName = (counts: Map<string, number>) => {
     const entries = Array.from(counts.entries());
     if (entries.length === 0) return "";
-    entries.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], undefined, { sensitivity: "base" }));
+    entries.sort(
+      (a, b) =>
+        b[1] - a[1] ||
+        a[0].localeCompare(b[0], undefined, { sensitivity: "base" })
+    );
     return entries[0][0];
   };
 
-  const aggregateWarPerformances = (warId: string, perfs: WarPerformance[]): WarPerformance[] => {
+  const aggregateWarPerformances = (
+    warId: string,
+    perfs: WarPerformance[]
+  ): WarPerformance[] => {
     const map = new Map<
       string,
       {
@@ -82,12 +166,19 @@ export default function GuildWarClient() {
       const displayName = normalizeMemberDisplayName(p.member_name ?? "");
       if (!displayName) return;
       const key = memberKey(displayName);
-      const current =
-        map.get(key) || { wins: 0, losses: 0, defense_wins: 0, nameCounts: new Map<string, number>() };
+      const current = map.get(key) || {
+        wins: 0,
+        losses: 0,
+        defense_wins: 0,
+        nameCounts: new Map<string, number>(),
+      };
       current.wins += p.wins;
       current.losses += p.losses;
       current.defense_wins += p.defense_wins;
-      current.nameCounts.set(displayName, (current.nameCounts.get(displayName) ?? 0) + 1);
+      current.nameCounts.set(
+        displayName,
+        (current.nameCounts.get(displayName) ?? 0) + 1
+      );
       map.set(key, current);
     });
 
@@ -106,18 +197,16 @@ export default function GuildWarClient() {
   };
 
   const makeWarTiersMoreGenerous = (warStats: MemberStats[]): MemberStats[] => {
-    const ranked = warStats
-      .slice()
-      .sort((a, b) => {
-        // Per-war ranking: WR -> wins -> def wins -> losses (lower better)
-        return (
-          b.win_rate - a.win_rate ||
-          b.total_wins - a.total_wins ||
-          b.total_def_wins - a.total_def_wins ||
-          a.total_losses - b.total_losses ||
-          a.member_name.localeCompare(b.member_name)
-        );
-      });
+    const ranked = warStats.slice().sort((a, b) => {
+      // Per-war ranking: WR -> wins -> def wins -> losses (lower better)
+      return (
+        b.win_rate - a.win_rate ||
+        b.total_wins - a.total_wins ||
+        b.total_def_wins - a.total_def_wins ||
+        a.total_losses - b.total_losses ||
+        a.member_name.localeCompare(b.member_name)
+      );
+    });
 
     const n = ranked.length;
     if (n === 0) return warStats;
@@ -133,7 +222,9 @@ export default function GuildWarClient() {
     }
 
     const topSet = new Set(ranked.slice(0, topCount).map((s) => s.member_name));
-    const lowSet = new Set(ranked.slice(n - lowCount).map((s) => s.member_name));
+    const lowSet = new Set(
+      ranked.slice(n - lowCount).map((s) => s.member_name)
+    );
 
     return warStats.map((s) => {
       if (topSet.has(s.member_name)) return { ...s, tier: "Top" };
@@ -168,7 +259,8 @@ export default function GuildWarClient() {
     );
 
     const allowedEditors = new Set(["Icewind", "UnknownSnow"]);
-    const ok = isLocalDevHost() || Boolean(ingameName && allowedEditors.has(ingameName));
+    const ok =
+      isLocalDevHost() || Boolean(ingameName && allowedEditors.has(ingameName));
     setCanEdit(ok);
     if (!ok) {
       setActiveTab((prev) => (prev === "input" ? "history" : prev));
@@ -180,7 +272,9 @@ export default function GuildWarClient() {
       .order("created_at", { ascending: false });
     if (warsData) setWars(warsData);
 
-    const { data: perfData } = await supabase.from("war_performances").select("*");
+    const { data: perfData } = await supabase
+      .from("war_performances")
+      .select("*");
     if (perfData) {
       setAllPerformances(perfData);
       setStats(calculateStats(perfData));
@@ -253,33 +347,34 @@ export default function GuildWarClient() {
       const displayName = normalizeMemberDisplayName(name);
       if (!displayName) continue;
       const key = memberKey(displayName);
-      const current =
-        perfMap.get(key) ||
-        {
-          member_name: displayName,
-          wins: 0,
-          losses: 0,
-          defense_wins: 0,
-          nameCounts: new Map<string, number>(),
-        };
+      const current = perfMap.get(key) || {
+        member_name: displayName,
+        wins: 0,
+        losses: 0,
+        defense_wins: 0,
+        nameCounts: new Map<string, number>(),
+      };
       current.wins += wins;
       current.losses += losses;
       current.defense_wins += defWins;
-      current.nameCounts.set(displayName, (current.nameCounts.get(displayName) ?? 0) + 1);
-      current.member_name = pickMostCommonName(current.nameCounts) || current.member_name;
+      current.nameCounts.set(
+        displayName,
+        (current.nameCounts.get(displayName) ?? 0) + 1
+      );
+      current.member_name =
+        pickMostCommonName(current.nameCounts) || current.member_name;
       perfMap.set(key, current);
     }
 
-    const performances: Omit<WarPerformance, "id" | "war_id" | "created_at">[] = Array.from(
-      perfMap.values()
-    )
-      .map((p) => ({
-        member_name: normalizeMemberDisplayName(p.member_name),
-        wins: p.wins,
-        losses: p.losses,
-        defense_wins: p.defense_wins,
-      }))
-      .sort((a, b) => a.member_name.localeCompare(b.member_name));
+    const performances: Omit<WarPerformance, "id" | "war_id" | "created_at">[] =
+      Array.from(perfMap.values())
+        .map((p) => ({
+          member_name: normalizeMemberDisplayName(p.member_name),
+          wins: p.wins,
+          losses: p.losses,
+          defense_wins: p.defense_wins,
+        }))
+        .sort((a, b) => a.member_name.localeCompare(b.member_name));
 
     return { opponent, performances };
   };
@@ -396,7 +491,10 @@ export default function GuildWarClient() {
       await fetchData();
 
       // Refresh selected war view
-      const updatedWar: War = { ...selectedWar, opponent_name: editParseResult.opponent };
+      const updatedWar: War = {
+        ...selectedWar,
+        opponent_name: editParseResult.opponent,
+      };
       setSelectedWar(updatedWar);
       const updatedPerfs = performancesToInsert.map((p, idx) => ({
         id: `${idx}`,
@@ -408,7 +506,9 @@ export default function GuildWarClient() {
         created_at: new Date().toISOString(),
       }));
       setSelectedWarPerformances(updatedPerfs);
-      setSelectedWarStats(makeWarTiersMoreGenerous(calculateStats(updatedPerfs)));
+      setSelectedWarStats(
+        makeWarTiersMoreGenerous(calculateStats(updatedPerfs))
+      );
       alert("War updated successfully!");
     } catch (error) {
       console.error("Error updating war:", error);
@@ -435,7 +535,11 @@ export default function GuildWarClient() {
       if (fetchError) throw fetchError;
 
       const ids = (rows ?? [])
-        .filter((r) => memberKey((r as { member_name: string }).member_name ?? "") === target)
+        .filter(
+          (r) =>
+            memberKey((r as { member_name: string }).member_name ?? "") ===
+            target
+        )
         .map((r) => (r as { id: string }).id)
         .filter(Boolean);
 
@@ -445,14 +549,19 @@ export default function GuildWarClient() {
         const chunkSize = 500;
         for (let i = 0; i < ids.length; i += chunkSize) {
           const chunk = ids.slice(i, i + chunkSize);
-          const { error } = await supabase.from("war_performances").delete().in("id", chunk);
+          const { error } = await supabase
+            .from("war_performances")
+            .delete()
+            .in("id", chunk);
           if (error) throw error;
         }
       }
 
       await fetchData();
       setSelectedWar(null);
-      alert(`Deleted ${memberToDelete.member_name} from all Guild War reports.`);
+      alert(
+        `Deleted ${memberToDelete.member_name} from all Guild War reports.`
+      );
     } catch (error) {
       console.error("Error deleting member:", error);
       alert("Failed to delete member.");
@@ -486,7 +595,9 @@ export default function GuildWarClient() {
 
     return (
       <div className="mb-8">
-        <h3 className={`text-xl font-bold mb-4 text-center ${colorClass} uppercase tracking-wider`}>
+        <h3
+          className={`text-xl font-bold mb-4 text-center ${colorClass} uppercase tracking-wider`}
+        >
           {title}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -502,33 +613,39 @@ export default function GuildWarClient() {
               }`}
             >
               <div className="flex justify-between items-start mb-2">
-                <span className="font-bold text-lg text-white">{s.member_name}</span>
+                <span className="font-bold text-lg text-white">
+                  {s.member_name}
+                </span>
                 <div className="flex flex-col items-end">
-                   {(() => {
-                     const standoutWr = s.win_rate >= 90 || (s.total_wins + s.total_losses >= 10 && s.win_rate <= 30);
-                     const standoutDw = s.total_def_wins >= 15;
-                     return (
-                       <>
-                         <span
-                           className={`${standoutWr ? "text-sm md:text-base" : "text-xs"} font-mono font-black ${winRateColor(
-                             s.win_rate
-                           )}`}
-                         >
-                           WR: {s.win_rate.toFixed(0)}%
-                         </span>
-                         <span
-                           className={`${standoutDw ? "text-sm md:text-base" : "text-xs"} font-mono font-black ${
-                             standoutDw ? "text-sky-300" : "text-gray-400"
-                           }`}
-                         >
-                           DW: {s.total_def_wins}
-                         </span>
-                       </>
-                     );
-                   })()}
+                  {(() => {
+                    const standoutWr =
+                      s.win_rate >= 90 ||
+                      (s.total_wins + s.total_losses >= 10 && s.win_rate <= 30);
+                    const standoutDw = s.total_def_wins >= 15;
+                    return (
+                      <>
+                        <span
+                          className={`${
+                            standoutWr ? "text-sm md:text-base" : "text-xs"
+                          } font-mono font-black ${winRateColor(s.win_rate)}`}
+                        >
+                          WR: {s.win_rate.toFixed(0)}%
+                        </span>
+                        <span
+                          className={`${
+                            standoutDw ? "text-sm md:text-base" : "text-xs"
+                          } font-mono font-black ${
+                            standoutDw ? "text-sky-300" : "text-gray-400"
+                          }`}
+                        >
+                          DW: {s.total_def_wins}
+                        </span>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
-              
+
               <div className="flex flex-wrap gap-2 mb-4">
                 {s.titles.map((t) => {
                   const titleBase =
@@ -566,18 +683,22 @@ export default function GuildWarClient() {
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs border-t border-white/10 pt-2">
-                 <div>
-                    <div className="text-gray-400">Record</div>
-                    <div className="text-lg md:text-xl font-black font-mono tracking-tight text-white">{s.total_wins}-{s.total_losses}</div>
-                 </div>
-                 <div>
-                    <div className="text-gray-400">Def Wins</div>
-                    <div className="text-lg md:text-xl font-black font-mono tracking-tight text-sky-300">{s.total_def_wins}</div>
-                 </div>
-                 <div>
-                    <div className="text-gray-400">Wars</div>
-                    <div className="font-bold text-white">{s.total_wars}</div>
-                 </div>
+                <div>
+                  <div className="text-gray-400">Record</div>
+                  <div className="text-lg md:text-xl font-black font-mono tracking-tight text-white">
+                    {s.total_wins}-{s.total_losses}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-gray-400">Def Wins</div>
+                  <div className="text-lg md:text-xl font-black font-mono tracking-tight text-sky-300">
+                    {s.total_def_wins}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-gray-400">Wars</div>
+                  <div className="font-bold text-white">{s.total_wars}</div>
+                </div>
               </div>
             </div>
           ))}
@@ -714,7 +835,11 @@ export default function GuildWarClient() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-16">
-        <AuthModal open={authModalOpen} reason="generic" onClose={() => setAuthModalOpen(false)} />
+        <AuthModal
+          open={authModalOpen}
+          reason="generic"
+          onClose={() => setAuthModalOpen(false)}
+        />
 
         <ConfirmModal
           open={confirmDeleteOpen}
@@ -763,8 +888,16 @@ export default function GuildWarClient() {
               { key: "stats" as const, label: "Overall Report" },
               { key: "leaders" as const, label: "Stats" },
               { key: "input" as const, label: "Input", requiresEdit: true },
-              { key: "admin" as const, label: "Admin Controls", requiresEdit: true },
-            ] satisfies Array<{ key: Tab; label: string; requiresEdit?: boolean }>
+              {
+                key: "admin" as const,
+                label: "Admin Controls",
+                requiresEdit: true,
+              },
+            ] satisfies Array<{
+              key: Tab;
+              label: string;
+              requiresEdit?: boolean;
+            }>
           ).map(({ key, label, requiresEdit }) => {
             if (requiresEdit && !canEdit) return null;
             return (
@@ -806,12 +939,17 @@ export default function GuildWarClient() {
                 <div className="space-y-6">
                   <div className="flex flex-col md:flex-row items-center justify-between bg-gray-800/50 p-6 rounded-2xl border border-gray-700">
                     <div className="flex items-center gap-4 w-full md:w-auto">
-                      <span className="text-gray-400 text-sm font-bold uppercase">Opponent:</span>
+                      <span className="text-gray-400 text-sm font-bold uppercase">
+                        Opponent:
+                      </span>
                       <input
                         type="text"
                         value={parseResult.opponent}
                         onChange={(e) =>
-                          setParseResult({ ...parseResult, opponent: e.target.value })
+                          setParseResult({
+                            ...parseResult,
+                            opponent: e.target.value,
+                          })
                         }
                         className="bg-transparent border-b-2 border-gray-600 focus:border-yellow-500 focus:outline-none font-bold text-2xl text-white w-full md:w-auto"
                       />
@@ -825,19 +963,38 @@ export default function GuildWarClient() {
                     <table className="w-full text-sm text-left">
                       <thead className="bg-gray-900 text-gray-400 sticky top-0 z-10">
                         <tr>
-                          <th className="p-4 font-bold uppercase text-xs tracking-wider">Member</th>
-                          <th className="p-4 font-bold uppercase text-xs tracking-wider">Wins</th>
-                          <th className="p-4 font-bold uppercase text-xs tracking-wider">Losses</th>
-                          <th className="p-4 font-bold uppercase text-xs tracking-wider">Def Wins</th>
+                          <th className="p-4 font-bold uppercase text-xs tracking-wider">
+                            Member
+                          </th>
+                          <th className="p-4 font-bold uppercase text-xs tracking-wider">
+                            Wins
+                          </th>
+                          <th className="p-4 font-bold uppercase text-xs tracking-wider">
+                            Losses
+                          </th>
+                          <th className="p-4 font-bold uppercase text-xs tracking-wider">
+                            Def Wins
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800 bg-gray-900/20">
                         {parseResult.performances.map((p, i) => (
-                          <tr key={i} className="hover:bg-white/5 transition-colors">
-                            <td className="p-4 font-bold text-white">{p.member_name}</td>
-                            <td className="p-4 text-green-400 font-mono font-bold">{p.wins}</td>
-                            <td className="p-4 text-red-400 font-mono font-bold">{p.losses}</td>
-                            <td className="p-4 text-blue-400 font-mono font-bold">{p.defense_wins}</td>
+                          <tr
+                            key={i}
+                            className="hover:bg-white/5 transition-colors"
+                          >
+                            <td className="p-4 font-bold text-white">
+                              {p.member_name}
+                            </td>
+                            <td className="p-4 text-green-400 font-mono font-bold">
+                              {p.wins}
+                            </td>
+                            <td className="p-4 text-red-400 font-mono font-bold">
+                              {p.losses}
+                            </td>
+                            <td className="p-4 text-blue-400 font-mono font-bold">
+                              {p.defense_wins}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -860,164 +1017,234 @@ export default function GuildWarClient() {
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
               {selectedWar ? (
                 <div>
-                  <button
-                    onClick={() => setSelectedWar(null)}
-                    className="mb-6 flex items-center gap-2 text-yellow-500 hover:text-yellow-400 font-bold transition-colors"
-                  >
-                    <span>&larr;</span> Back to Reports
-                  </button>
-                  <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-                    <div className="flex items-baseline gap-4 flex-wrap">
-                      <h2 className="text-3xl font-bold text-white">
-                        {selectedWar.opponent_name}
-                      </h2>
-                      <span className="text-gray-500 text-lg">
-                        {new Date(selectedWar.war_date).toLocaleDateString(undefined, {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </div>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+                    <button
+                      onClick={() => setSelectedWar(null)}
+                      className="flex items-center gap-2 text-yellow-500 hover:text-yellow-400 font-bold transition-colors"
+                    >
+                      <span>&larr;</span> Back to Reports
+                    </button>
 
-                    {canEdit ? (
-                      <div className="flex gap-3">
-                        {!isEditingWar ? (
-                          <button
-                            onClick={beginEditSelectedWar}
-                            className="px-4 py-2 bg-slate-900/30 glass hover:bg-slate-900/45 text-slate-200 hover:text-white font-bold text-sm rounded-xl border border-white/10 transition-all"
-                          >
-                            Edit War CSV
-                          </button>
-                        ) : (
-                          <>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!selectedWar) return;
+                        setExportingReportPng(true);
+                        try {
+                          await exportElementAsPng({
+                            el: reportExportRef.current,
+                            filename: `guild-war-report-${safeFilenamePart(
+                              selectedWar.opponent_name
+                            )}-${new Date(selectedWar.war_date)
+                              .toISOString()
+                              .slice(0, 10)}.png`,
+                            expandScrollable: true,
+                          });
+                        } catch (e) {
+                          console.error("Failed to export report PNG", e);
+                          alert("Failed to export PNG.");
+                        } finally {
+                          setExportingReportPng(false);
+                        }
+                      }}
+                      disabled={exportingReportPng}
+                      className="px-4 py-2 bg-slate-900/35 glass hover:bg-slate-900/55 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 hover:text-white font-black text-xs rounded-xl border border-white/10 transition-all uppercase tracking-widest"
+                      title="Download a PNG of this war report"
+                    >
+                      {exportingReportPng ? "EXPORTING PNG" : "DOWNLOAD PNG"}
+                    </button>
+                  </div>
+
+                  <div ref={reportExportRef} className="space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                      <div className="flex items-baseline gap-4 flex-wrap">
+                        <h2 className="text-3xl font-bold text-white">
+                          {selectedWar.opponent_name}
+                        </h2>
+                        <span className="text-gray-500 text-lg">
+                          {new Date(selectedWar.war_date).toLocaleDateString(
+                            undefined,
+                            {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            }
+                          )}
+                        </span>
+                      </div>
+
+                      {canEdit ? (
+                        <div className="flex gap-3">
+                          {!isEditingWar ? (
                             <button
-                              onClick={() => {
-                                setIsEditingWar(false);
-                                setEditText("");
-                                setEditParseResult(null);
-                              }}
+                              onClick={beginEditSelectedWar}
                               className="px-4 py-2 bg-slate-900/30 glass hover:bg-slate-900/45 text-slate-200 hover:text-white font-bold text-sm rounded-xl border border-white/10 transition-all"
                             >
-                              Cancel
+                              Edit War CSV
                             </button>
-                            <button
-                              onClick={saveSelectedWarEdits}
-                              disabled={loading || !editParseResult}
-                              className="px-4 py-2 bg-blue-600/90 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {loading ? "Saving..." : "Save Changes"}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  {/* Per-war wowfactor stats */}
-                  <div className="mb-10">
-                    <div className="text-center mb-8">
-                      <h3 className="text-3xl md:text-4xl font-black text-white italic uppercase tracking-tight">
-                        War <span className="text-emerald-400">Performance</span>
-                      </h3>
-                      <p className="text-slate-400 font-semibold">
-                        Stats for this war only (not combined)
-                      </p>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setIsEditingWar(false);
+                                  setEditText("");
+                                  setEditParseResult(null);
+                                }}
+                                className="px-4 py-2 bg-slate-900/30 glass hover:bg-slate-900/45 text-slate-200 hover:text-white font-bold text-sm rounded-xl border border-white/10 transition-all"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={saveSelectedWarEdits}
+                                disabled={loading || !editParseResult}
+                                className="px-4 py-2 bg-blue-600/90 hover:bg-blue-500 text-white font-bold text-sm rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {loading ? "Saving..." : "Save Changes"}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
 
-                    {renderTier(selectedWarStats, "Top", "Top Performers (Excellent)", "text-blue-400")}
-                    {renderTier(selectedWarStats, "Mid", "Mid-Tier Performance", "text-emerald-400")}
-                    {renderTier(selectedWarStats, "Low", "Needs Improvement", "text-rose-400")}
-                  </div>
+                    {/* Per-war wowfactor stats */}
+                    <div className="mb-10">
+                      <div className="text-center mb-8">
+                        <h3 className="text-3xl md:text-4xl font-black text-white italic uppercase tracking-tight">
+                          War{" "}
+                          <span className="text-emerald-400">Performance</span>
+                        </h3>
+                        <p className="text-slate-400 font-semibold">
+                          Stats for this war only (not combined)
+                        </p>
+                      </div>
 
-                  {isEditingWar ? (
-                    <div className="space-y-4 mb-10">
-                      <label className="block text-sm font-black text-slate-400 uppercase tracking-wide">
-                        Edit War Data (paste TSV/CSV)
-                      </label>
-                      <textarea
-                        value={editText}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setEditText(val);
-                          setEditParseResult(parseWarText(val));
-                        }}
-                        className="w-full h-64 bg-slate-900/35 glass border border-white/10 rounded-xl p-4 font-mono text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                      />
-
-                      {editParseResult ? (
-                        <div className="p-4 rounded-2xl border border-white/10 bg-slate-950/25 glass text-slate-300 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                          <div>
-                            <div className="text-xs font-black uppercase tracking-wider text-slate-500">Opponent</div>
-                            <div className="text-white font-black text-lg">{editParseResult.opponent}</div>
-                          </div>
-                          <div className="text-sm font-black text-slate-300">
-                            {editParseResult.performances.length} members parsed
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 glass text-rose-200 text-sm font-black">
-                          Could not parse. Ensure format is: Name, Record (W-L), Def Wins.
-                        </div>
+                      {renderTier(
+                        selectedWarStats,
+                        "Top",
+                        "Top Performers (Excellent)",
+                        "text-blue-400"
+                      )}
+                      {renderTier(
+                        selectedWarStats,
+                        "Mid",
+                        "Mid-Tier Performance",
+                        "text-emerald-400"
+                      )}
+                      {renderTier(
+                        selectedWarStats,
+                        "Low",
+                        "Needs Improvement",
+                        "text-rose-400"
                       )}
                     </div>
-                  ) : (
-                    <div className="max-h-[600px] overflow-y-auto border border-gray-800 rounded-xl custom-scrollbar">
-                      <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-900 text-gray-400 sticky top-0 z-10">
-                          <tr>
-                            <th className="p-4 font-bold uppercase text-xs tracking-wider">
-                              Member
-                            </th>
-                            <th className="p-4 font-bold uppercase text-xs tracking-wider">
-                              Record
-                            </th>
-                            <th className="p-4 font-bold uppercase text-xs tracking-wider">
-                              Def Wins
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-800 bg-gray-900/20">
-                          {selectedWarPerformances.map((p) => (
-                            <tr key={p.id} className="hover:bg-white/5 transition-colors">
-                              <td className="p-4 font-bold text-white">{p.member_name}</td>
-                              <td className="p-4">
-                                {(() => {
-                                  const attacks = p.wins + p.losses;
-                                  const wr = attacks > 0 ? (p.wins / attacks) * 100 : 0;
-                                  return (
-                                    <div className="flex flex-col">
-                                      <div
-                                        className={`text-2xl md:text-3xl font-black font-mono tracking-tight ${winRateColor(
-                                          wr
-                                        )}`}
-                                      >
-                                        {p.wins}-{p.losses}
-                                      </div>
-                                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                                        Attack Record
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-                              </td>
-                              <td className="p-4">
-                                <div className="flex flex-col">
-                                  <div className="text-2xl md:text-3xl font-black font-mono tracking-tight text-sky-300">
-                                    {p.defense_wins}
-                                  </div>
-                                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                                    Def Wins
-                                  </div>
-                                </div>
-                              </td>
+
+                    {isEditingWar ? (
+                      <div className="space-y-4 mb-10">
+                        <label className="block text-sm font-black text-slate-400 uppercase tracking-wide">
+                          Edit War Data (paste TSV/CSV)
+                        </label>
+                        <textarea
+                          value={editText}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditText(val);
+                            setEditParseResult(parseWarText(val));
+                          }}
+                          className="w-full h-64 bg-slate-900/35 glass border border-white/10 rounded-xl p-4 font-mono text-sm text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                        />
+
+                        {editParseResult ? (
+                          <div className="p-4 rounded-2xl border border-white/10 bg-slate-950/25 glass text-slate-300 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                              <div className="text-xs font-black uppercase tracking-wider text-slate-500">
+                                Opponent
+                              </div>
+                              <div className="text-white font-black text-lg">
+                                {editParseResult.opponent}
+                              </div>
+                            </div>
+                            <div className="text-sm font-black text-slate-300">
+                              {editParseResult.performances.length} members
+                              parsed
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 glass text-rose-200 text-sm font-black">
+                            Could not parse. Ensure format is: Name, Record
+                            (W-L), Def Wins.
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        className="max-h-[600px] overflow-y-auto border border-gray-800 rounded-xl custom-scrollbar"
+                        data-export-expand="true"
+                      >
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-gray-900 text-gray-400 sticky top-0 z-10">
+                            <tr>
+                              <th className="p-4 font-bold uppercase text-xs tracking-wider">
+                                Member
+                              </th>
+                              <th className="p-4 font-bold uppercase text-xs tracking-wider">
+                                Record
+                              </th>
+                              <th className="p-4 font-bold uppercase text-xs tracking-wider">
+                                Def Wins
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody className="divide-y divide-gray-800 bg-gray-900/20">
+                            {selectedWarPerformances.map((p) => (
+                              <tr
+                                key={p.id}
+                                className="hover:bg-white/5 transition-colors"
+                              >
+                                <td className="p-4 font-bold text-white">
+                                  {p.member_name}
+                                </td>
+                                <td className="p-4">
+                                  {(() => {
+                                    const attacks = p.wins + p.losses;
+                                    const wr =
+                                      attacks > 0
+                                        ? (p.wins / attacks) * 100
+                                        : 0;
+                                    return (
+                                      <div className="flex flex-col">
+                                        <div
+                                          className={`text-2xl md:text-3xl font-black font-mono tracking-tight ${winRateColor(
+                                            wr
+                                          )}`}
+                                        >
+                                          {p.wins}-{p.losses}
+                                        </div>
+                                        <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                          Attack Record
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex flex-col">
+                                    <div className="text-2xl md:text-3xl font-black font-mono tracking-tight text-sky-300">
+                                      {p.defense_wins}
+                                    </div>
+                                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                      Def Wins
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <>
@@ -1042,12 +1269,15 @@ export default function GuildWarClient() {
                                 {war.opponent_name}
                               </h3>
                               <p className="text-sm text-gray-400 mt-1">
-                                {new Date(war.war_date).toLocaleDateString(undefined, {
-                                  weekday: "long",
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                })}
+                                {new Date(war.war_date).toLocaleDateString(
+                                  undefined,
+                                  {
+                                    weekday: "long",
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  }
+                                )}
                               </p>
                             </div>
                             <div className="text-right">
@@ -1067,18 +1297,57 @@ export default function GuildWarClient() {
 
           {activeTab === "stats" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="text-center mb-10">
-                <h2 className="text-4xl md:text-5xl font-black text-white italic uppercase tracking-tight mb-2">
-                  Overall <span className="text-blue-400">Report</span>
-                </h2>
-                <p className="text-slate-400 font-semibold">
-                  Cumulative wowfactor tiers across all recorded wars
-                </p>
+              <div className="flex justify-center mb-6">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setExportingOverallPng(true);
+                    try {
+                      await exportElementAsPng({
+                        el: overallExportRef.current,
+                        filename: `guild-war-overall-report-${new Date()
+                          .toISOString()
+                          .slice(0, 10)}.png`,
+                      });
+                    } catch (e) {
+                      console.error("Failed to export overall report PNG", e);
+                      alert("Failed to export PNG.");
+                    } finally {
+                      setExportingOverallPng(false);
+                    }
+                  }}
+                  disabled={exportingOverallPng}
+                  className="px-4 py-2 bg-slate-900/35 glass hover:bg-slate-900/55 disabled:opacity-50 disabled:cursor-not-allowed text-slate-200 hover:text-white font-black text-xs rounded-xl border border-white/10 transition-all uppercase tracking-widest"
+                  title="Download a PNG of the Overall Report"
+                >
+                  {exportingOverallPng ? "EXPORTING PNG" : "DOWNLOAD PNG"}
+                </button>
               </div>
-              
-              {renderTier(stats, "Top", "Top Performers (Excellent)", "text-blue-400")}
-              {renderTier(stats, "Mid", "Mid-Tier Performance", "text-emerald-400")}
-              {renderTier(stats, "Low", "Needs Improvement", "text-rose-400")}
+
+              <div ref={overallExportRef}>
+                <div className="text-center mb-10">
+                  <h2 className="text-4xl md:text-5xl font-black text-white italic uppercase tracking-tight mb-2">
+                    Overall <span className="text-blue-400">Report</span>
+                  </h2>
+                  <p className="text-slate-400 font-semibold">
+                    Cumulative wowfactor tiers across all recorded wars
+                  </p>
+                </div>
+
+                {renderTier(
+                  stats,
+                  "Top",
+                  "Top Performers (Excellent)",
+                  "text-blue-400"
+                )}
+                {renderTier(
+                  stats,
+                  "Mid",
+                  "Mid-Tier Performance",
+                  "text-emerald-400"
+                )}
+                {renderTier(stats, "Low", "Needs Improvement", "text-rose-400")}
+              </div>
             </div>
           )}
 
@@ -1091,14 +1360,12 @@ export default function GuildWarClient() {
                     if (!statsExportRef.current) return;
                     setExportingStatsPng(true);
                     try {
-                      const dataUrl = await toPng(statsExportRef.current, {
-                        cacheBust: true,
-                        pixelRatio: 2,
+                      await exportElementAsPng({
+                        el: statsExportRef.current,
+                        filename: `guild-war-stats-${new Date()
+                          .toISOString()
+                          .slice(0, 10)}.png`,
                       });
-                      const a = document.createElement("a");
-                      a.href = dataUrl;
-                      a.download = `guild-war-stats-${new Date().toISOString().slice(0, 10)}.png`;
-                      a.click();
                     } catch (e) {
                       console.error("Failed to export stats PNG", e);
                       alert("Failed to export PNG.");
@@ -1120,476 +1387,681 @@ export default function GuildWarClient() {
                     Guild War <span className="text-yellow-500">Stats</span>
                   </h2>
                   <p className="text-slate-400 font-semibold">
-                    High-signal rankings across all wars (attack, defense, consistency)
+                    High-signal rankings across all wars (attack, defense,
+                    consistency)
                   </p>
                 </div>
 
-              {(() => {
-                const totals = allPerformances.reduce(
-                  (acc, p) => {
-                    acc.wins += p.wins;
-                    acc.losses += p.losses;
-                    acc.defWins += p.defense_wins;
-                    return acc;
-                  },
-                  { wins: 0, losses: 0, defWins: 0 }
-                );
-                const totalAttacks = totals.wins + totals.losses;
-                const overallWR = totalAttacks > 0 ? (totals.wins / totalAttacks) * 100 : 0;
+                {(() => {
+                  const totals = allPerformances.reduce(
+                    (acc, p) => {
+                      acc.wins += p.wins;
+                      acc.losses += p.losses;
+                      acc.defWins += p.defense_wins;
+                      return acc;
+                    },
+                    { wins: 0, losses: 0, defWins: 0 }
+                  );
+                  const totalAttacks = totals.wins + totals.losses;
+                  const overallWR =
+                    totalAttacks > 0 ? (totals.wins / totalAttacks) * 100 : 0;
 
-                const byWins = [...stats].sort((a, b) => b.total_wins - a.total_wins);
-                const byDef = [...stats].sort((a, b) => b.total_def_wins - a.total_def_wins);
-                const byWars = [...stats].sort((a, b) => b.total_wars - a.total_wars);
-                const byWinRate = [...stats]
-                  .filter((s) => s.total_wins + s.total_losses >= 10)
-                  .sort((a, b) => b.win_rate - a.win_rate || b.total_wins - a.total_wins);
-                const byAvgDef = [...stats]
-                  .filter((s) => s.total_wars >= 3)
-                  .sort((a, b) => b.avg_def_wins - a.avg_def_wins || b.total_def_wins - a.total_def_wins);
+                  const byWins = [...stats].sort(
+                    (a, b) => b.total_wins - a.total_wins
+                  );
+                  const byDef = [...stats].sort(
+                    (a, b) => b.total_def_wins - a.total_def_wins
+                  );
+                  const byWars = [...stats].sort(
+                    (a, b) => b.total_wars - a.total_wars
+                  );
+                  const byWinRate = [...stats]
+                    .filter((s) => s.total_wins + s.total_losses >= 10)
+                    .sort(
+                      (a, b) =>
+                        b.win_rate - a.win_rate || b.total_wins - a.total_wins
+                    );
+                  const byAvgDef = [...stats]
+                    .filter((s) => s.total_wars >= 3)
+                    .sort(
+                      (a, b) =>
+                        b.avg_def_wins - a.avg_def_wins ||
+                        b.total_def_wins - a.total_def_wins
+                    );
 
-                const byMostLosses = [...stats].sort((a, b) => b.total_losses - a.total_losses);
-                const byWorstWinRate = [...stats]
-                  .filter((s) => s.total_wins + s.total_losses >= 10)
-                  .sort((a, b) => a.win_rate - b.win_rate || b.total_losses - a.total_losses);
-                const byWorstAvgDef = [...stats]
-                  .filter((s) => s.total_wars >= 3)
-                  .sort((a, b) => a.avg_def_wins - b.avg_def_wins || a.total_def_wins - b.total_def_wins);
-                const openGates = [...stats]
-                  .filter((s) => s.total_wars >= 3 && s.total_def_wins === 0)
-                  .sort((a, b) => b.total_wars - a.total_wars);
+                  const byMostLosses = [...stats].sort(
+                    (a, b) => b.total_losses - a.total_losses
+                  );
+                  const byWorstWinRate = [...stats]
+                    .filter((s) => s.total_wins + s.total_losses >= 10)
+                    .sort(
+                      (a, b) =>
+                        a.win_rate - b.win_rate ||
+                        b.total_losses - a.total_losses
+                    );
+                  const byWorstAvgDef = [...stats]
+                    .filter((s) => s.total_wars >= 3)
+                    .sort(
+                      (a, b) =>
+                        a.avg_def_wins - b.avg_def_wins ||
+                        a.total_def_wins - b.total_def_wins
+                    );
+                  const openGates = [...stats]
+                    .filter((s) => s.total_wars >= 3 && s.total_def_wins === 0)
+                    .sort((a, b) => b.total_wars - a.total_wars);
 
-                const byMvp = [...stats]
-                  .map((s) => {
-                    const score = s.total_wins * 2 + s.total_def_wins - s.total_losses;
-                    return { ...s, _score: score } as MemberStats & { _score: number };
-                  })
-                  .sort((a, b) => b._score - a._score);
+                  const byMvp = [...stats]
+                    .map((s) => {
+                      const score =
+                        s.total_wins * 2 + s.total_def_wins - s.total_losses;
+                      return { ...s, _score: score } as MemberStats & {
+                        _score: number;
+                      };
+                    })
+                    .sort((a, b) => b._score - a._score);
 
-                const byAntiMvp = [...byMvp].slice().sort((a, b) => a._score - b._score);
+                  const byAntiMvp = [...byMvp]
+                    .slice()
+                    .sort((a, b) => a._score - b._score);
 
-                const attacksFor = (s: MemberStats) => s.total_wins + s.total_losses;
-                const intKingCandidate = [...stats]
-                  .filter((s) => attacksFor(s) >= 10)
-                  .sort((a, b) => b.total_losses - a.total_losses || a.win_rate - b.win_rate || attacksFor(b) - attacksFor(a));
-                const intKing = intKingCandidate[0] ?? [...stats].sort((a, b) => b.total_losses - a.total_losses)[0];
+                  const attacksFor = (s: MemberStats) =>
+                    s.total_wins + s.total_losses;
+                  const intKingCandidate = [...stats]
+                    .filter((s) => attacksFor(s) >= 10)
+                    .sort(
+                      (a, b) =>
+                        b.total_losses - a.total_losses ||
+                        a.win_rate - b.win_rate ||
+                        attacksFor(b) - attacksFor(a)
+                    );
+                  const intKing =
+                    intKingCandidate[0] ??
+                    [...stats].sort(
+                      (a, b) => b.total_losses - a.total_losses
+                    )[0];
 
-                const lossMagnetCandidate = [...stats]
-                  .filter((s) => attacksFor(s) >= 10)
-                  .sort((a, b) => b.total_losses - a.total_losses || attacksFor(b) - attacksFor(a));
-                const lossMagnet = lossMagnetCandidate[0] ?? intKing;
+                  const lossMagnetCandidate = [...stats]
+                    .filter((s) => attacksFor(s) >= 10)
+                    .sort(
+                      (a, b) =>
+                        b.total_losses - a.total_losses ||
+                        attacksFor(b) - attacksFor(a)
+                    );
+                  const lossMagnet = lossMagnetCandidate[0] ?? intKing;
 
-                const openGateEmperor = openGates[0];
+                  const openGateEmperor = openGates[0];
 
-                const perfect = [...stats]
-                  .filter((s) => s.win_rate === 100 && s.total_wins >= 5)
-                  .sort((a, b) => b.total_wins - a.total_wins);
+                  const perfect = [...stats]
+                    .filter((s) => s.win_rate === 100 && s.total_wins >= 5)
+                    .sort((a, b) => b.total_wins - a.total_wins);
 
-                const renderTopList = (
-                  title: string,
-                  subtitle: string,
-                  rows: Array<{
-                    key: string;
-                    primary: string;
-                    secondary: string;
-                    right: ReactNode;
-                  }>
-                ) => (
-                  <div className="relative overflow-hidden bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
-                    <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 rounded-full bg-blue-500/10 blur-3xl" />
-                    <div className="mb-6">
-                      <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
-                        {title}
-                      </h3>
-                      <p className="text-slate-400 font-semibold mt-1">{subtitle}</p>
-                    </div>
-                    {rows.length === 0 ? (
-                      <div className="text-slate-500 font-semibold">Not enough data yet.</div>
-                    ) : (
-                      <div className="divide-y divide-white/10">
-                        {rows.slice(0, 10).map((r, idx) => (
-                          <div
-                            key={r.key}
-                            className={`py-3 flex items-center justify-between gap-4 ${
-                              idx === 0 ? "bg-white/5 rounded-2xl px-3" : ""
-                            }`}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-xl bg-slate-900/60 glass border border-white/10 flex items-center justify-center font-black text-white">
-                                {idx + 1}
-                              </div>
-                              <div className="min-w-0">
-                                <div className={`${idx === 0 ? "text-lg" : ""} font-black text-white truncate`}>
-                                  {r.primary}
-                                </div>
-                                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
-                                  {r.secondary}
-                                </div>
-                              </div>
-                            </div>
-                            <div className={`${idx === 0 ? "text-lg" : ""} text-right font-black text-white whitespace-nowrap`}>
-                              {r.right}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-
-                return (
-                  <>
-                    <div className="relative overflow-hidden bg-slate-950/15 glass border-2 border-white/10 rounded-[2rem] p-6 md:p-10">
-                      <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full bg-yellow-500/10 blur-3xl" />
-                      <div className="pointer-events-none absolute -bottom-32 -left-32 w-[420px] h-[420px] rounded-full bg-blue-500/10 blur-3xl" />
-                      <div className="relative grid grid-cols-2 md:grid-cols-6 gap-4">
-                      <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
-                        <div className="text-3xl font-black text-blue-400">{wars.length}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Wars</div>
-                      </div>
-                      <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
-                        <div className="text-3xl font-black text-emerald-400">{stats.length}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Members</div>
-                      </div>
-                      <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
-                        <div className="text-3xl font-black text-white">{totalAttacks}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Total Attacks</div>
-                      </div>
-                      <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
-                        <div className="text-3xl font-black text-green-400">{totals.wins}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Wins</div>
-                      </div>
-                      <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
-                        <div className="text-3xl font-black text-rose-400">{totals.losses}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Losses</div>
-                      </div>
-                      <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
-                        <div className={`text-3xl font-black ${winRateColor(overallWR)}`}>{overallWR.toFixed(0)}%</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">Overall WR</div>
-                      </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {renderTopList(
-                        "Top Attackers",
-                        "Most wins across all wars",
-                        byWins.map((s) => ({
-                          key: s.member_name,
-                          primary: s.member_name,
-                          secondary: `${s.total_wins + s.total_losses} attacks • ${s.win_rate.toFixed(0)}% WR`,
-                          right: `${s.total_wins}W`,
-                        }))
-                      )}
-
-                      {renderTopList(
-                        "Top Defenders",
-                        "Most defense wins across all wars",
-                        byDef.map((s) => ({
-                          key: s.member_name,
-                          primary: s.member_name,
-                          secondary: `${s.total_wars} wars • ${s.avg_def_wins.toFixed(1)} avg DW`,
-                          right: `${s.total_def_wins} DW`,
-                        }))
-                      )}
-
-                      {renderTopList(
-                        "Sharpshooters",
-                        "Best win rate (min 10 attacks)",
-                        byWinRate.map((s) => ({
-                          key: s.member_name,
-                          primary: s.member_name,
-                          secondary: `${s.total_wins}-${s.total_losses} record`,
-                          right: (
-                            <span className={winRateColor(s.win_rate)}>
-                              {s.win_rate.toFixed(0)}% WR
-                            </span>
-                          ),
-                        }))
-                      )}
-
-                      {renderTopList(
-                        "War Veterans",
-                        "Most wars recorded",
-                        byWars.map((s) => ({
-                          key: s.member_name,
-                          primary: s.member_name,
-                          secondary: `${s.total_wins + s.total_losses} attacks • ${s.win_rate.toFixed(0)}% WR`,
-                          right: `${s.total_wars} wars`,
-                        }))
-                      )}
-
-                      {renderTopList(
-                        "Iron Walls",
-                        "Best average defense wins (min 3 wars)",
-                        byAvgDef.map((s) => ({
-                          key: s.member_name,
-                          primary: s.member_name,
-                          secondary: `${s.total_def_wins} total DW • ${s.total_wars} wars`,
-                          right: `${s.avg_def_wins.toFixed(1)} avg DW`,
-                        }))
-                      )}
-
-                      {renderTopList(
-                        "MVP Score",
-                        "Score = Wins×2 + DefWins − Losses",
-                        byMvp.map((s) => {
-                          const score = (s as MemberStats & { _score: number })._score;
-                          return {
-                            key: s.member_name,
-                            primary: s.member_name,
-                            secondary: `${s.total_wins}W • ${s.total_def_wins} DW • ${s.total_losses}L`,
-                            right: `${score}`,
-                          };
-                        })
-                      )}
-
-                      {renderTopList(
-                        "Worst MVP Score",
-                        "Opposite of MVP (lowest score overall)",
-                        byAntiMvp.map((s) => {
-                          const score = (s as MemberStats & { _score: number })._score;
-                          return {
-                            key: s.member_name,
-                            primary: s.member_name,
-                            secondary: `${s.total_wins}W • ${s.total_def_wins} DW • ${s.total_losses}L`,
-                            right: <span className="text-rose-300">{score}</span>,
-                          };
-                        })
-                      )}
-
-                      {renderTopList(
-                        "Needs Training",
-                        "Worst win rate (min 10 attacks)",
-                        byWorstWinRate.map((s) => ({
-                          key: s.member_name,
-                          primary: s.member_name,
-                          secondary: `${s.total_wins}-${s.total_losses} record • ${s.total_wins + s.total_losses} attacks`,
-                          right: (
-                            <span className={winRateColor(s.win_rate)}>
-                              {s.win_rate.toFixed(0)}% WR
-                            </span>
-                          ),
-                        }))
-                      )}
-
-                      {renderTopList(
-                        "Most Losses",
-                        "Highest total losses across all wars",
-                        byMostLosses.map((s) => ({
-                          key: s.member_name,
-                          primary: s.member_name,
-                          secondary: `${s.total_wins + s.total_losses} attacks • ${s.win_rate.toFixed(0)}% WR`,
-                          right: <span className="text-rose-300">{s.total_losses}L</span>,
-                        }))
-                      )}
-
-                      {renderTopList(
-                        "Defense Liability",
-                        "Lowest average defense wins (min 3 wars)",
-                        byWorstAvgDef.map((s) => ({
-                          key: s.member_name,
-                          primary: s.member_name,
-                          secondary: `${s.total_def_wins} total DW • ${s.total_wars} wars`,
-                          right: `${s.avg_def_wins.toFixed(1)} avg DW`,
-                        }))
-                      )}
-
-                      {renderTopList(
-                        "Open Gates",
-                        "0 defense wins (min 3 wars)",
-                        openGates.map((s) => ({
-                          key: s.member_name,
-                          primary: s.member_name,
-                          secondary: `${s.total_wars} wars recorded`,
-                          right: "0 DW",
-                        }))
-                      )}
-                    </div>
-
-                    {perfect.length > 0 ? (
-                      <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
+                  const renderTopList = (
+                    title: string,
+                    subtitle: string,
+                    rows: Array<{
+                      key: string;
+                      primary: string;
+                      secondary: string;
+                      right: ReactNode;
+                    }>
+                  ) => (
+                    <div className="relative overflow-hidden bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
+                      <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 rounded-full bg-blue-500/10 blur-3xl" />
+                      <div className="mb-6">
                         <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
-                          Perfect <span className="text-emerald-400">Warriors</span>
+                          {title}
                         </h3>
-                        <p className="text-slate-400 font-semibold mt-1">100% win rate (min 5 wins)</p>
-                        <div className="mt-6 flex flex-wrap gap-3">
-                          {perfect.map((s) => (
+                        <p className="text-slate-400 font-semibold mt-1">
+                          {subtitle}
+                        </p>
+                      </div>
+                      {rows.length === 0 ? (
+                        <div className="text-slate-500 font-semibold">
+                          Not enough data yet.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-white/10">
+                          {rows.slice(0, 10).map((r, idx) => (
                             <div
-                              key={s.member_name}
-                              className="px-4 py-2 rounded-xl border border-white/10 bg-slate-900/40 glass"
+                              key={r.key}
+                              className={`py-3 flex items-center justify-between gap-4 ${
+                                idx === 0 ? "bg-white/5 rounded-2xl px-3" : ""
+                              }`}
                             >
-                              <div className="font-black text-white">{s.member_name}</div>
-                              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                                {s.total_wins}-{s.total_losses} • {s.total_wins + s.total_losses} attacks
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-xl bg-slate-900/60 glass border border-white/10 flex items-center justify-center font-black text-white">
+                                  {idx + 1}
+                                </div>
+                                <div className="min-w-0">
+                                  <div
+                                    className={`${
+                                      idx === 0 ? "text-lg" : ""
+                                    } font-black text-white truncate`}
+                                  >
+                                    {r.primary}
+                                  </div>
+                                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 truncate">
+                                    {r.secondary}
+                                  </div>
+                                </div>
+                              </div>
+                              <div
+                                className={`${
+                                  idx === 0 ? "text-lg" : ""
+                                } text-right font-black text-white whitespace-nowrap`}
+                              >
+                                {r.right}
                               </div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    ) : null}
+                      )}
+                    </div>
+                  );
 
-                    {stats.length > 0 ? (
-                      <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
-                        <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
-                          Hall of <span className="text-emerald-400">Fame</span>
-                        </h3>
-                        <p className="text-slate-400 font-semibold mt-1">
-                          Crowned from your best overall performers
-                        </p>
-
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/12 to-slate-950/10 p-5">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300">MVP</div>
-                            <div className="mt-1 text-xl font-black text-white truncate">{byMvp[0]?.member_name ?? "—"}</div>
-                            {byMvp[0] ? (
-                              <div className="mt-2 text-xs font-bold text-slate-300">
-                                <span className="text-slate-400">Score:</span>{" "}
-                                <span className="text-emerald-200">{(byMvp[0] as MemberStats & { _score: number })._score}</span>
-                              </div>
-                            ) : null}
-                            <div className="mt-3 text-sm font-black text-emerald-100">
-                              {byMvp[0]
-                                ? `${byMvp[0].total_wins}W • ${byMvp[0].total_losses}L • ${byMvp[0].total_def_wins} DW`
-                                : "No data"}
+                  return (
+                    <>
+                      <div className="relative overflow-hidden bg-slate-950/15 glass border-2 border-white/10 rounded-[2rem] p-6 md:p-10">
+                        <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full bg-yellow-500/10 blur-3xl" />
+                        <div className="pointer-events-none absolute -bottom-32 -left-32 w-[420px] h-[420px] rounded-full bg-blue-500/10 blur-3xl" />
+                        <div className="relative grid grid-cols-2 md:grid-cols-6 gap-4">
+                          <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
+                            <div className="text-3xl font-black text-blue-400">
+                              {wars.length}
+                            </div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">
+                              Wars
                             </div>
                           </div>
-
-                          <div className="relative overflow-hidden rounded-2xl border border-sky-500/25 bg-gradient-to-br from-sky-500/12 to-slate-950/10 p-5">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-sky-200">Attack King</div>
-                            <div className="mt-1 text-xl font-black text-white truncate">{byWins[0]?.member_name ?? "—"}</div>
-                            {byWins[0] ? (
-                              <div className="mt-2 text-xs font-bold text-slate-300">
-                                <span className="text-slate-400">Wins:</span> {byWins[0].total_wins} •{" "}
-                                <span className={winRateColor(byWins[0].win_rate)}>{byWins[0].win_rate.toFixed(0)}% WR</span>
-                              </div>
-                            ) : null}
-                            <div className="mt-3 text-sm font-black text-sky-100">
-                              {byWins[0] ? `${byWins[0].total_wins}-${byWins[0].total_losses} record` : "No data"}
+                          <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
+                            <div className="text-3xl font-black text-emerald-400">
+                              {stats.length}
+                            </div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">
+                              Members
                             </div>
                           </div>
-
-                          <div className="relative overflow-hidden rounded-2xl border border-teal-500/25 bg-gradient-to-br from-teal-500/12 to-slate-950/10 p-5">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-teal-200">Fortress</div>
-                            <div className="mt-1 text-xl font-black text-white truncate">{byDef[0]?.member_name ?? "—"}</div>
-                            {byDef[0] ? (
-                              <div className="mt-2 text-xs font-bold text-slate-300">
-                                <span className="text-slate-400">Def Wins:</span> {byDef[0].total_def_wins} •{" "}
-                                <span className="text-slate-400">Avg:</span> {byDef[0].avg_def_wins.toFixed(1)}
-                              </div>
-                            ) : null}
-                            <div className="mt-3 text-sm font-black text-teal-100">
-                              {byDef[0] ? `${byDef[0].total_wars} wars recorded` : "No data"}
+                          <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
+                            <div className="text-3xl font-black text-white">
+                              {totalAttacks}
+                            </div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">
+                              Total Attacks
+                            </div>
+                          </div>
+                          <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
+                            <div className="text-3xl font-black text-green-400">
+                              {totals.wins}
+                            </div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">
+                              Wins
+                            </div>
+                          </div>
+                          <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
+                            <div className="text-3xl font-black text-rose-400">
+                              {totals.losses}
+                            </div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">
+                              Losses
+                            </div>
+                          </div>
+                          <div className="bg-slate-900/60 glass border-2 border-white/10 rounded-2xl p-5 text-center">
+                            <div
+                              className={`text-3xl font-black ${winRateColor(
+                                overallWR
+                              )}`}
+                            >
+                              {overallWR.toFixed(0)}%
+                            </div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2">
+                              Overall WR
                             </div>
                           </div>
                         </div>
+                      </div>
 
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sharpshooter</div>
-                            <div className="mt-1 font-black text-white">
-                              {byWinRate[0]?.member_name ?? "—"}{" "}
-                              {byWinRate[0] ? (
-                                <span className={winRateColor(byWinRate[0].win_rate)}>
-                                  {byWinRate[0].win_rate.toFixed(0)}% WR
-                                </span>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {renderTopList(
+                          "Top Attackers",
+                          "Most wins across all wars",
+                          byWins.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${
+                              s.total_wins + s.total_losses
+                            } attacks • ${s.win_rate.toFixed(0)}% WR`,
+                            right: `${s.total_wins}W`,
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "Top Defenders",
+                          "Most defense wins across all wars",
+                          byDef.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${
+                              s.total_wars
+                            } wars • ${s.avg_def_wins.toFixed(1)} avg DW`,
+                            right: `${s.total_def_wins} DW`,
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "Sharpshooters",
+                          "Best win rate (min 10 attacks)",
+                          byWinRate.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${s.total_wins}-${s.total_losses} record`,
+                            right: (
+                              <span className={winRateColor(s.win_rate)}>
+                                {s.win_rate.toFixed(0)}% WR
+                              </span>
+                            ),
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "War Veterans",
+                          "Most wars recorded",
+                          byWars.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${
+                              s.total_wins + s.total_losses
+                            } attacks • ${s.win_rate.toFixed(0)}% WR`,
+                            right: `${s.total_wars} wars`,
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "Iron Walls",
+                          "Best average defense wins (min 3 wars)",
+                          byAvgDef.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${s.total_def_wins} total DW • ${s.total_wars} wars`,
+                            right: `${s.avg_def_wins.toFixed(1)} avg DW`,
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "MVP Score",
+                          "Score = Wins×2 + DefWins − Losses",
+                          byMvp.map((s) => {
+                            const score = (
+                              s as MemberStats & { _score: number }
+                            )._score;
+                            return {
+                              key: s.member_name,
+                              primary: s.member_name,
+                              secondary: `${s.total_wins}W • ${s.total_def_wins} DW • ${s.total_losses}L`,
+                              right: `${score}`,
+                            };
+                          })
+                        )}
+
+                        {renderTopList(
+                          "Worst MVP Score",
+                          "Opposite of MVP (lowest score overall)",
+                          byAntiMvp.map((s) => {
+                            const score = (
+                              s as MemberStats & { _score: number }
+                            )._score;
+                            return {
+                              key: s.member_name,
+                              primary: s.member_name,
+                              secondary: `${s.total_wins}W • ${s.total_def_wins} DW • ${s.total_losses}L`,
+                              right: (
+                                <span className="text-rose-300">{score}</span>
+                              ),
+                            };
+                          })
+                        )}
+
+                        {renderTopList(
+                          "Needs Training",
+                          "Worst win rate (min 10 attacks)",
+                          byWorstWinRate.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${s.total_wins}-${
+                              s.total_losses
+                            } record • ${
+                              s.total_wins + s.total_losses
+                            } attacks`,
+                            right: (
+                              <span className={winRateColor(s.win_rate)}>
+                                {s.win_rate.toFixed(0)}% WR
+                              </span>
+                            ),
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "Most Losses",
+                          "Highest total losses across all wars",
+                          byMostLosses.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${
+                              s.total_wins + s.total_losses
+                            } attacks • ${s.win_rate.toFixed(0)}% WR`,
+                            right: (
+                              <span className="text-rose-300">
+                                {s.total_losses}L
+                              </span>
+                            ),
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "Defense Liability",
+                          "Lowest average defense wins (min 3 wars)",
+                          byWorstAvgDef.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${s.total_def_wins} total DW • ${s.total_wars} wars`,
+                            right: `${s.avg_def_wins.toFixed(1)} avg DW`,
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "Open Gates",
+                          "0 defense wins (min 3 wars)",
+                          openGates.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${s.total_wars} wars recorded`,
+                            right: "0 DW",
+                          }))
+                        )}
+                      </div>
+
+                      {perfect.length > 0 ? (
+                        <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
+                          <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
+                            Perfect{" "}
+                            <span className="text-emerald-400">Warriors</span>
+                          </h3>
+                          <p className="text-slate-400 font-semibold mt-1">
+                            100% win rate (min 5 wins)
+                          </p>
+                          <div className="mt-6 flex flex-wrap gap-3">
+                            {perfect.map((s) => (
+                              <div
+                                key={s.member_name}
+                                className="px-4 py-2 rounded-xl border border-white/10 bg-slate-900/40 glass"
+                              >
+                                <div className="font-black text-white">
+                                  {s.member_name}
+                                </div>
+                                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                                  {s.total_wins}-{s.total_losses} •{" "}
+                                  {s.total_wins + s.total_losses} attacks
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {stats.length > 0 ? (
+                        <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
+                          <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
+                            Hall of{" "}
+                            <span className="text-emerald-400">Fame</span>
+                          </h3>
+                          <p className="text-slate-400 font-semibold mt-1">
+                            Crowned from your best overall performers
+                          </p>
+
+                          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-emerald-500/12 to-slate-950/10 p-5">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                                MVP
+                              </div>
+                              <div className="mt-1 text-xl font-black text-white truncate">
+                                {byMvp[0]?.member_name ?? "—"}
+                              </div>
+                              {byMvp[0] ? (
+                                <div className="mt-2 text-xs font-bold text-slate-300">
+                                  <span className="text-slate-400">Score:</span>{" "}
+                                  <span className="text-emerald-200">
+                                    {
+                                      (
+                                        byMvp[0] as MemberStats & {
+                                          _score: number;
+                                        }
+                                      )._score
+                                    }
+                                  </span>
+                                </div>
                               ) : null}
+                              <div className="mt-3 text-sm font-black text-emerald-100">
+                                {byMvp[0]
+                                  ? `${byMvp[0].total_wins}W • ${byMvp[0].total_losses}L • ${byMvp[0].total_def_wins} DW`
+                                  : "No data"}
+                              </div>
                             </div>
-                            <div className="text-xs font-bold text-slate-400 mt-1">
-                              {byWinRate[0]
-                                ? `${byWinRate[0].total_wins}-${byWinRate[0].total_losses} record (min 10 attacks)`
-                                : "Not enough data yet."}
-                            </div>
-                          </div>
 
-                          <div className="px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Iron Wall</div>
-                            <div className="mt-1 font-black text-white">
-                              {byAvgDef[0]?.member_name ?? "—"}{" "}
-                              {byAvgDef[0] ? (
-                                <span className="text-sky-300">
-                                  {byAvgDef[0].avg_def_wins.toFixed(1)} avg DW
-                                </span>
+                            <div className="relative overflow-hidden rounded-2xl border border-sky-500/25 bg-gradient-to-br from-sky-500/12 to-slate-950/10 p-5">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-sky-200">
+                                Attack King
+                              </div>
+                              <div className="mt-1 text-xl font-black text-white truncate">
+                                {byWins[0]?.member_name ?? "—"}
+                              </div>
+                              {byWins[0] ? (
+                                <div className="mt-2 text-xs font-bold text-slate-300">
+                                  <span className="text-slate-400">Wins:</span>{" "}
+                                  {byWins[0].total_wins} •{" "}
+                                  <span
+                                    className={winRateColor(byWins[0].win_rate)}
+                                  >
+                                    {byWins[0].win_rate.toFixed(0)}% WR
+                                  </span>
+                                </div>
                               ) : null}
+                              <div className="mt-3 text-sm font-black text-sky-100">
+                                {byWins[0]
+                                  ? `${byWins[0].total_wins}-${byWins[0].total_losses} record`
+                                  : "No data"}
+                              </div>
                             </div>
-                            <div className="text-xs font-bold text-slate-400 mt-1">
-                              {byAvgDef[0]
-                                ? `${byAvgDef[0].total_def_wins} total DW (min 3 wars)`
-                                : "Not enough data yet."}
+
+                            <div className="relative overflow-hidden rounded-2xl border border-teal-500/25 bg-gradient-to-br from-teal-500/12 to-slate-950/10 p-5">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-teal-200">
+                                Fortress
+                              </div>
+                              <div className="mt-1 text-xl font-black text-white truncate">
+                                {byDef[0]?.member_name ?? "—"}
+                              </div>
+                              {byDef[0] ? (
+                                <div className="mt-2 text-xs font-bold text-slate-300">
+                                  <span className="text-slate-400">
+                                    Def Wins:
+                                  </span>{" "}
+                                  {byDef[0].total_def_wins} •{" "}
+                                  <span className="text-slate-400">Avg:</span>{" "}
+                                  {byDef[0].avg_def_wins.toFixed(1)}
+                                </div>
+                              ) : null}
+                              <div className="mt-3 text-sm font-black text-teal-100">
+                                {byDef[0]
+                                  ? `${byDef[0].total_wars} wars recorded`
+                                  : "No data"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Sharpshooter
+                              </div>
+                              <div className="mt-1 font-black text-white">
+                                {byWinRate[0]?.member_name ?? "—"}{" "}
+                                {byWinRate[0] ? (
+                                  <span
+                                    className={winRateColor(
+                                      byWinRate[0].win_rate
+                                    )}
+                                  >
+                                    {byWinRate[0].win_rate.toFixed(0)}% WR
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="text-xs font-bold text-slate-400 mt-1">
+                                {byWinRate[0]
+                                  ? `${byWinRate[0].total_wins}-${byWinRate[0].total_losses} record (min 10 attacks)`
+                                  : "Not enough data yet."}
+                              </div>
+                            </div>
+
+                            <div className="px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Iron Wall
+                              </div>
+                              <div className="mt-1 font-black text-white">
+                                {byAvgDef[0]?.member_name ?? "—"}{" "}
+                                {byAvgDef[0] ? (
+                                  <span className="text-sky-300">
+                                    {byAvgDef[0].avg_def_wins.toFixed(1)} avg DW
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="text-xs font-bold text-slate-400 mt-1">
+                                {byAvgDef[0]
+                                  ? `${byAvgDef[0].total_def_wins} total DW (min 3 wars)`
+                                  : "Not enough data yet."}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ) : null}
+                      ) : null}
 
-                    {stats.length > 0 ? (
-                      <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
-                        <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
-                          Hall of <span className="text-rose-400">Shame</span>
-                        </h3>
-                        <p className="text-slate-400 font-semibold mt-1">
-                          Fun titles for the most painful stats (min 10 attacks where applicable)
-                        </p>
+                      {stats.length > 0 ? (
+                        <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
+                          <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
+                            Hall of <span className="text-rose-400">Shame</span>
+                          </h3>
+                          <p className="text-slate-400 font-semibold mt-1">
+                            Fun titles for the most painful stats (min 10
+                            attacks where applicable)
+                          </p>
 
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="relative overflow-hidden rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-500/10 to-slate-950/10 p-5">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-rose-300">Int King</div>
-                            <div className="mt-1 text-xl font-black text-white truncate">{intKing?.member_name ?? "—"}</div>
-                            {intKing ? (
-                              <div className="mt-2 text-xs font-bold text-slate-300">
-                                <span className="text-slate-400">Record:</span> {intKing.total_wins}-{intKing.total_losses} •{" "}
-                                <span className={winRateColor(intKing.win_rate)}>{intKing.win_rate.toFixed(0)}% WR</span>
+                          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="relative overflow-hidden rounded-2xl border border-rose-500/25 bg-gradient-to-br from-rose-500/10 to-slate-950/10 p-5">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-rose-300">
+                                Int King
                               </div>
-                            ) : null}
-                            <div className="mt-3 text-sm font-black text-rose-200">
-                              {intKing ? `${intKing.total_losses} failed attacks` : "No data"}
+                              <div className="mt-1 text-xl font-black text-white truncate">
+                                {intKing?.member_name ?? "—"}
+                              </div>
+                              {intKing ? (
+                                <div className="mt-2 text-xs font-bold text-slate-300">
+                                  <span className="text-slate-400">
+                                    Record:
+                                  </span>{" "}
+                                  {intKing.total_wins}-{intKing.total_losses} •{" "}
+                                  <span
+                                    className={winRateColor(intKing.win_rate)}
+                                  >
+                                    {intKing.win_rate.toFixed(0)}% WR
+                                  </span>
+                                </div>
+                              ) : null}
+                              <div className="mt-3 text-sm font-black text-rose-200">
+                                {intKing
+                                  ? `${intKing.total_losses} failed attacks`
+                                  : "No data"}
+                              </div>
+                            </div>
+
+                            <div className="relative overflow-hidden rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-500/10 to-slate-950/10 p-5">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-orange-200">
+                                Loss Magnet
+                              </div>
+                              <div className="mt-1 text-xl font-black text-white truncate">
+                                {lossMagnet?.member_name ?? "—"}
+                              </div>
+                              {lossMagnet ? (
+                                <div className="mt-2 text-xs font-bold text-slate-300">
+                                  <span className="text-slate-400">
+                                    Attacks:
+                                  </span>{" "}
+                                  {attacksFor(lossMagnet)} •{" "}
+                                  <span className="text-slate-400">
+                                    Losses:
+                                  </span>{" "}
+                                  {lossMagnet.total_losses}
+                                </div>
+                              ) : null}
+                              <div className="mt-3 text-sm font-black text-orange-100">
+                                {lossMagnet
+                                  ? `Net pain: -${
+                                      lossMagnet.total_losses -
+                                      lossMagnet.total_wins
+                                    }`
+                                  : "No data"}
+                              </div>
+                            </div>
+
+                            <div className="relative overflow-hidden rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-slate-950/10 p-5">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-yellow-200">
+                                Anti-MVP
+                              </div>
+                              <div className="mt-1 text-xl font-black text-white truncate">
+                                {byAntiMvp[0]?.member_name ?? "—"}
+                              </div>
+                              {byAntiMvp[0] ? (
+                                <div className="mt-2 text-xs font-bold text-slate-300">
+                                  <span className="text-slate-400">
+                                    MVP Score:
+                                  </span>{" "}
+                                  <span className="text-rose-300">
+                                    {
+                                      (
+                                        byAntiMvp[0] as MemberStats & {
+                                          _score: number;
+                                        }
+                                      )._score
+                                    }
+                                  </span>
+                                </div>
+                              ) : null}
+                              <div className="mt-3 text-sm font-black text-yellow-100">
+                                {byAntiMvp[0]
+                                  ? `${byAntiMvp[0].total_wins}W • ${byAntiMvp[0].total_losses}L • ${byAntiMvp[0].total_def_wins} DW`
+                                  : "No data"}
+                              </div>
                             </div>
                           </div>
 
-                          <div className="relative overflow-hidden rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-500/10 to-slate-950/10 p-5">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-orange-200">Loss Magnet</div>
-                            <div className="mt-1 text-xl font-black text-white truncate">{lossMagnet?.member_name ?? "—"}</div>
-                            {lossMagnet ? (
-                              <div className="mt-2 text-xs font-bold text-slate-300">
-                                <span className="text-slate-400">Attacks:</span> {attacksFor(lossMagnet)} •{" "}
-                                <span className="text-slate-400">Losses:</span> {lossMagnet.total_losses}
+                          {openGateEmperor ? (
+                            <div className="mt-4 px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Bonus Title
                               </div>
-                            ) : null}
-                            <div className="mt-3 text-sm font-black text-orange-100">
-                              {lossMagnet ? `Net pain: -${lossMagnet.total_losses - lossMagnet.total_wins}` : "No data"}
-                            </div>
-                          </div>
-
-                          <div className="relative overflow-hidden rounded-2xl border border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-slate-950/10 p-5">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-yellow-200">Anti-MVP</div>
-                            <div className="mt-1 text-xl font-black text-white truncate">{byAntiMvp[0]?.member_name ?? "—"}</div>
-                            {byAntiMvp[0] ? (
-                              <div className="mt-2 text-xs font-bold text-slate-300">
-                                <span className="text-slate-400">MVP Score:</span>{" "}
-                                <span className="text-rose-300">{(byAntiMvp[0] as MemberStats & { _score: number })._score}</span>
+                              <div className="mt-1 font-black text-white">
+                                Open Gate Emperor:{" "}
+                                <span className="text-orange-200">
+                                  {openGateEmperor.member_name}
+                                </span>
                               </div>
-                            ) : null}
-                            <div className="mt-3 text-sm font-black text-yellow-100">
-                              {byAntiMvp[0]
-                                ? `${byAntiMvp[0].total_wins}W • ${byAntiMvp[0].total_losses}L • ${byAntiMvp[0].total_def_wins} DW`
-                                : "No data"}
+                              <div className="text-xs font-bold text-slate-400 mt-1">
+                                0 defense wins across{" "}
+                                {openGateEmperor.total_wars} wars
+                              </div>
                             </div>
-                          </div>
+                          ) : null}
                         </div>
-
-                        {openGateEmperor ? (
-                          <div className="mt-4 px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bonus Title</div>
-                            <div className="mt-1 font-black text-white">
-                              Open Gate Emperor: <span className="text-orange-200">{openGateEmperor.member_name}</span>
-                            </div>
-                            <div className="text-xs font-bold text-slate-400 mt-1">0 defense wins across {openGateEmperor.total_wars} wars</div>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </>
-                );
-              })()}
+                      ) : null}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1601,7 +2073,8 @@ export default function GuildWarClient() {
                   Admin <span className="text-rose-400">Controls</span>
                 </h2>
                 <p className="text-slate-400 font-semibold">
-                  Remove ex-members from the guild database (deletes their performance rows)
+                  Remove ex-members from the guild database (deletes their
+                  performance rows)
                 </p>
               </div>
 
@@ -1616,30 +2089,59 @@ export default function GuildWarClient() {
                 </div>
 
                 {stats.length === 0 ? (
-                  <div className="text-slate-500 font-semibold">No member data yet.</div>
+                  <div className="text-slate-500 font-semibold">
+                    No member data yet.
+                  </div>
                 ) : (
                   <div className="overflow-x-auto border border-white/10 rounded-2xl">
                     <table className="w-full text-sm text-left">
                       <thead className="bg-slate-950/30 text-slate-400">
                         <tr>
-                          <th className="p-4 font-black uppercase text-xs tracking-wider">Member</th>
-                          <th className="p-4 font-black uppercase text-xs tracking-wider">Wars</th>
-                          <th className="p-4 font-black uppercase text-xs tracking-wider">Wins</th>
-                          <th className="p-4 font-black uppercase text-xs tracking-wider">Losses</th>
-                          <th className="p-4 font-black uppercase text-xs tracking-wider">Def Wins</th>
-                          <th className="p-4 font-black uppercase text-xs tracking-wider text-right">Actions</th>
+                          <th className="p-4 font-black uppercase text-xs tracking-wider">
+                            Member
+                          </th>
+                          <th className="p-4 font-black uppercase text-xs tracking-wider">
+                            Wars
+                          </th>
+                          <th className="p-4 font-black uppercase text-xs tracking-wider">
+                            Wins
+                          </th>
+                          <th className="p-4 font-black uppercase text-xs tracking-wider">
+                            Losses
+                          </th>
+                          <th className="p-4 font-black uppercase text-xs tracking-wider">
+                            Def Wins
+                          </th>
+                          <th className="p-4 font-black uppercase text-xs tracking-wider text-right">
+                            Actions
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/10 bg-slate-900/10">
                         {[...stats]
-                          .sort((a, b) => a.member_name.localeCompare(b.member_name))
+                          .sort((a, b) =>
+                            a.member_name.localeCompare(b.member_name)
+                          )
                           .map((s) => (
-                            <tr key={s.member_name} className="hover:bg-white/5 transition-colors">
-                              <td className="p-4 font-black text-white">{s.member_name}</td>
-                              <td className="p-4 font-mono font-bold text-slate-200">{s.total_wars}</td>
-                              <td className="p-4 font-mono font-bold text-green-400">{s.total_wins}</td>
-                              <td className="p-4 font-mono font-bold text-rose-400">{s.total_losses}</td>
-                              <td className="p-4 font-mono font-bold text-blue-400">{s.total_def_wins}</td>
+                            <tr
+                              key={s.member_name}
+                              className="hover:bg-white/5 transition-colors"
+                            >
+                              <td className="p-4 font-black text-white">
+                                {s.member_name}
+                              </td>
+                              <td className="p-4 font-mono font-bold text-slate-200">
+                                {s.total_wars}
+                              </td>
+                              <td className="p-4 font-mono font-bold text-green-400">
+                                {s.total_wins}
+                              </td>
+                              <td className="p-4 font-mono font-bold text-rose-400">
+                                {s.total_losses}
+                              </td>
+                              <td className="p-4 font-mono font-bold text-blue-400">
+                                {s.total_def_wins}
+                              </td>
                               <td className="p-4 text-right">
                                 <button
                                   onClick={() => requestDeleteMember(s)}
