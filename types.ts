@@ -40,3 +40,20 @@ export interface StrategyLog {
   author: string; // email (derived from Supabase login)
   createdAt: number;
 }
+
+export interface War {
+  id: string;
+  opponent_name: string;
+  war_date: string;
+  created_at: string;
+}
+
+export interface WarPerformance {
+  id: string;
+  war_id: string;
+  member_name: string;
+  wins: number;
+  losses: number;
+  defense_wins: number;
+  created_at: string;
+}
