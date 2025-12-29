@@ -18,6 +18,8 @@ import { calculateStats, MemberStats } from "./utils";
 
 type Tab = "input" | "history" | "stats" | "leaders" | "admin";
 
+const ADMIN_INGAME_NAMES = new Set(["Icewind", "UnknownSnow"]);
+
 export default function GuildWarClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -27,6 +29,7 @@ export default function GuildWarClient() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [authDisplayName, setAuthDisplayName] = useState<string | null>(null);
+  const [authIngameName, setAuthIngameName] = useState<string | null>(null);
   const [isLocalhost, setIsLocalhost] = useState(false);
   const [csvInput, setCsvInput] = useState("");
   const [parseResult, setParseResult] = useState<{
@@ -298,13 +301,14 @@ export default function GuildWarClient() {
       typeof user?.user_metadata?.ingame_name === "string"
         ? (user.user_metadata.ingame_name as string)
         : null;
+    setAuthIngameName(ingameName);
     setAuthDisplayName(
       ingameName || (user?.email ? user.email.split("@")[0] : null)
     );
 
-    const allowedEditors = new Set(["Icewind", "UnknownSnow"]);
     const ok =
-      isLocalDevHost() || Boolean(ingameName && allowedEditors.has(ingameName));
+      isLocalDevHost() ||
+      Boolean(ingameName && ADMIN_INGAME_NAMES.has(ingameName));
     setCanEdit(ok);
     if (!ok) {
       setActiveTab((prev) => (prev === "input" ? "history" : prev));
@@ -334,6 +338,7 @@ export default function GuildWarClient() {
     await supabase.auth.signOut();
     setAuthEmail(null);
     setAuthDisplayName(null);
+    setAuthIngameName(null);
     const ok = isLocalDevHost();
     setCanEdit(ok);
     setActiveTab("history");
@@ -2258,7 +2263,9 @@ export default function GuildWarClient() {
                         </div>
                       ) : null}
 
-                      {stats.length > 0 ? (
+                      {stats.length > 0 &&
+                      authIngameName &&
+                      ADMIN_INGAME_NAMES.has(authIngameName) ? (
                         <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
                           <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
                             Hall of <span className="text-rose-400">Shame</span>
