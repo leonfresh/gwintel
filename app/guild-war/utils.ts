@@ -8,6 +8,8 @@ export interface MemberStats {
   total_def_wins: number;
   win_rate: number;
   avg_def_wins: number;
+  missed_attacks: number;
+  participation_rate: number;
   titles: string[];
   tier: "Top" | "Mid" | "Low";
 }
@@ -72,6 +74,10 @@ export const calculateStats = (
     ([, data]) => {
       const wars = data.warIds.size;
       const total_attacks = data.wins + data.losses;
+      const expected_attacks = wars * 5; // 5 attacks per war
+      const missed_attacks = Math.max(0, expected_attacks - total_attacks);
+      const participation_rate =
+        expected_attacks > 0 ? (total_attacks / expected_attacks) * 100 : 0;
       const win_rate =
         total_attacks > 0 ? (data.wins / total_attacks) * 100 : 0;
       const avg_def_wins = wars > 0 ? data.def_wins / wars : 0;
@@ -84,6 +90,8 @@ export const calculateStats = (
         total_def_wins: data.def_wins,
         win_rate,
         avg_def_wins,
+        missed_attacks,
+        participation_rate,
         titles: [],
         tier: "Mid", // Default
       };
@@ -130,10 +138,27 @@ export const calculateStats = (
     if (s.total_losses >= 15) titles.push("Bleeding Attacks");
     if (s.total_def_wins === 0 && s.total_wars >= 3) titles.push("Open Gate");
 
+    // Titles Logic (Inactivity)
+    if (s.participation_rate < 20 && s.total_wars >= 3)
+      titles.push("Ghost Member");
+    else if (s.participation_rate < 40 && s.total_wars >= 3)
+      titles.push("AFK Warrior");
+    else if (s.participation_rate < 60 && s.total_wars >= 3)
+      titles.push("Part-Timer");
+    if (s.missed_attacks >= 20) titles.push("Serial Skipper");
+    if (s.missed_attacks >= s.total_wars * 4 && s.total_wars >= 3)
+      titles.push("Bench Warmer");
+    if (total_attacks === 0 && s.total_wars >= 2) titles.push("MIA");
+
     // Tier Logic
     if (s.win_rate >= 85 || (s.win_rate >= 70 && s.avg_def_wins >= 4)) {
       tier = "Top";
     } else if (s.win_rate < 40 && s.avg_def_wins < 2) {
+      tier = "Low";
+    }
+
+    // Inactivity penalty: force Low tier if participation is terrible
+    if (s.participation_rate < 30 && s.total_wars >= 3) {
       tier = "Low";
     }
 

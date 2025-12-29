@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { toPng } from "html-to-image";
 import {
   useCallback,
@@ -18,6 +19,9 @@ import { calculateStats, MemberStats } from "./utils";
 type Tab = "input" | "history" | "stats" | "leaders" | "admin";
 
 export default function GuildWarClient() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState<Tab>("history");
   const [loading, setLoading] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -243,6 +247,33 @@ export default function GuildWarClient() {
     setIsLocalhost(isLocalDevHost());
   }, []);
 
+  // Handle URL-based tab selection
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      const validTabs: Tab[] = ["input", "history", "stats", "leaders", "admin"];
+      if (validTabs.includes(tabParam as Tab)) {
+        setActiveTab(tabParam as Tab);
+      }
+    }
+  }, [searchParams]);
+
+  // Handle URL-based war selection
+  useEffect(() => {
+    const warId = searchParams.get("war");
+    if (warId && wars.length > 0 && allPerformances.length > 0) {
+      const war = wars.find((w) => w.id === warId);
+      if (war && war.id !== selectedWar?.id) {
+        setSelectedWar(war);
+        const perfsRaw = allPerformances.filter((p) => p.war_id === war.id);
+        const perfs = aggregateWarPerformances(war.id, perfsRaw);
+        setSelectedWarPerformances(perfs);
+        setSelectedWarStats(makeWarTiersMoreGenerous(calculateStats(perfs)));
+        setActiveTab("history");
+      }
+    }
+  }, [searchParams, wars, selectedWar, allPerformances]);
+
   const fetchData = useCallback(async () => {
     if (!supabase) return;
     const {
@@ -388,6 +419,10 @@ export default function GuildWarClient() {
     setIsEditingWar(false);
     setEditText("");
     setEditParseResult(null);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("war", war.id);
+    params.set("tab", "history");
+    router.push(`/guild-war?${params.toString()}`, { scroll: false });
   };
 
   const parseCSV = (input: string) => {
@@ -672,6 +707,18 @@ export default function GuildWarClient() {
                       ? "bg-gradient-to-r from-blue-500/12 to-slate-500/10 border-blue-500/15 text-slate-100"
                       : t === "Recruit"
                       ? "bg-gradient-to-r from-yellow-500/20 to-orange-500/10 border-yellow-500/30 text-yellow-100"
+                      : t === "Ghost Member"
+                      ? "bg-gradient-to-r from-slate-500/20 to-slate-600/10 border-slate-500/30 text-slate-200"
+                      : t === "AFK Warrior"
+                      ? "bg-gradient-to-r from-purple-500/20 to-slate-500/10 border-purple-500/30 text-purple-200"
+                      : t === "Part-Timer"
+                      ? "bg-gradient-to-r from-amber-500/20 to-orange-500/10 border-amber-500/30 text-amber-100"
+                      : t === "Serial Skipper"
+                      ? "bg-gradient-to-r from-red-500/20 to-orange-500/10 border-red-500/30 text-red-200"
+                      : t === "Bench Warmer"
+                      ? "bg-gradient-to-r from-gray-500/20 to-slate-500/10 border-gray-500/30 text-gray-200"
+                      : t === "MIA"
+                      ? "bg-gradient-to-r from-black/30 to-slate-800/20 border-slate-700/40 text-slate-400"
                       : "bg-white/10 border-white/10 text-white/90";
 
                   return (
@@ -700,6 +747,28 @@ export default function GuildWarClient() {
                   <div className="font-bold text-white">{s.total_wars}</div>
                 </div>
               </div>
+
+              {s.participation_rate < 80 && s.total_wars >= 2 ? (
+                <div className="mt-2 pt-2 border-t border-white/10 text-center">
+                  <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                    Participation
+                  </div>
+                  <div
+                    className={`text-sm font-black ${
+                      s.participation_rate < 40
+                        ? "text-rose-400"
+                        : s.participation_rate < 60
+                        ? "text-orange-300"
+                        : "text-yellow-300"
+                    }`}
+                  >
+                    {s.participation_rate.toFixed(0)}%
+                    <span className="text-xs font-bold text-slate-500 ml-1">
+                      ({s.missed_attacks} missed)
+                    </span>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -903,7 +972,16 @@ export default function GuildWarClient() {
             return (
               <button
                 key={key}
-                onClick={() => setActiveTab(key)}
+                onClick={() => {
+                  setActiveTab(key);
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set("tab", key);
+                  // Clear war param when switching tabs (except for history)
+                  if (key !== "history") {
+                    params.delete("war");
+                  }
+                  router.push(`/guild-war?${params.toString()}`, { scroll: false });
+                }}
                 className={`px-8 py-4 font-black text-sm uppercase tracking-wider transition-all relative ${
                   activeTab === key
                     ? "text-blue-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-1 after:bg-blue-500 after:rounded-t-full"
@@ -934,6 +1012,27 @@ export default function GuildWarClient() {
                   placeholder={`Myth vs Spartan\tATK Record\tDEF W\n\naeki\t5-0\t2\nalex2k\t2-3\t2\n...`}
                 />
               </div>
+
+              {!parseResult && (
+                <div className="mt-6 p-8 border-2 border-dashed border-slate-700 rounded-2xl bg-slate-900/20 text-center">
+                  <p className="text-slate-400 font-semibold">
+                    Paste your war data above in CSV format. The data will be
+                    automatically parsed as you type.
+                  </p>
+                  <p className="text-slate-500 text-sm mt-2">
+                    Format:{" "}
+                    <span className="font-mono text-slate-400">
+                      Member Name [TAB] ATK Record [TAB] DEF Wins
+                    </span>
+                  </p>
+                  <p className="text-slate-500 text-sm mt-1">
+                    Example:{" "}
+                    <span className="font-mono text-slate-400">
+                      aeki[TAB]5-0[TAB]2
+                    </span>
+                  </p>
+                </div>
+              )}
 
               {parseResult && (
                 <div className="space-y-6">
@@ -1019,7 +1118,13 @@ export default function GuildWarClient() {
                 <div>
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
                     <button
-                      onClick={() => setSelectedWar(null)}
+                      onClick={() => {
+                        setSelectedWar(null);
+                        const params = new URLSearchParams(searchParams.toString());
+                        params.delete("war");
+                        const paramString = params.toString();
+                        router.push(paramString ? `/guild-war?${paramString}` : "/guild-war", { scroll: false });
+                      }}
                       className="flex items-center gap-2 text-yellow-500 hover:text-yellow-400 font-bold transition-colors"
                     >
                       <span>&larr;</span> Back to Reports
@@ -1257,37 +1362,62 @@ export default function GuildWarClient() {
                     </div>
                   ) : (
                     <div className="grid gap-4">
-                      {wars.map((war) => (
-                        <div
-                          key={war.id}
-                          onClick={() => handleWarClick(war)}
-                          className="bg-gray-800/40 border border-gray-700 p-6 rounded-xl hover:bg-gray-800/60 transition-colors cursor-pointer group"
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <h3 className="text-xl font-bold text-white group-hover:text-yellow-500 transition-colors">
-                                {war.opponent_name}
-                              </h3>
-                              <p className="text-sm text-gray-400 mt-1">
-                                {new Date(war.war_date).toLocaleDateString(
-                                  undefined,
-                                  {
-                                    weekday: "long",
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                  }
-                                )}
-                              </p>
+                      {wars.map((war) => {
+                        const warUrl = `/guild-war?war=${war.id}`;
+                        return (
+                          <div
+                            key={war.id}
+                            className="bg-gray-800/40 border border-gray-700 p-6 rounded-xl hover:bg-gray-800/60 transition-colors group"
+                          >
+                            <div
+                              onClick={() => handleWarClick(war)}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <h3 className="text-xl font-bold text-white group-hover:text-yellow-500 transition-colors">
+                                    {war.opponent_name}
+                                  </h3>
+                                  <p className="text-sm text-gray-400 mt-1">
+                                    {new Date(war.war_date).toLocaleDateString(
+                                      undefined,
+                                      {
+                                        weekday: "long",
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                      }
+                                    )}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-gray-300">
+                                    View Details &rarr;
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <span className="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-gray-300">
-                                View Details &rarr;
-                              </span>
-                            </div>
+
+                            {/* Copy Link Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const url = `${window.location.origin}${warUrl}`;
+                                navigator.clipboard.writeText(url);
+                                const btn = e.currentTarget;
+                                const original = btn.textContent;
+                                btn.textContent = "✓ Copied!";
+                                setTimeout(() => {
+                                  btn.textContent = original;
+                                }, 2000);
+                              }}
+                              className="mt-3 w-full px-3 py-2 text-xs font-bold uppercase tracking-wider bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg border border-blue-500/30 transition-all"
+                            >
+                              📋 Copy Link
+                            </button>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </>
@@ -1450,13 +1580,40 @@ export default function GuildWarClient() {
                     .filter((s) => s.total_wars >= 3 && s.total_def_wins === 0)
                     .sort((a, b) => b.total_wars - a.total_wars);
 
+                  const byMissedAttacks = [...stats]
+                    .filter((s) => s.total_wars >= 3)
+                    .sort(
+                      (a, b) =>
+                        b.missed_attacks - a.missed_attacks ||
+                        a.participation_rate - b.participation_rate
+                    );
+
+                  const byParticipation = [...stats]
+                    .filter((s) => s.total_wars >= 3)
+                    .sort(
+                      (a, b) =>
+                        a.participation_rate - b.participation_rate ||
+                        b.missed_attacks - a.missed_attacks
+                    );
+
+                  const byInactivity = [...stats]
+                    .filter(
+                      (s) => s.total_wars >= 2 && s.participation_rate < 80
+                    )
+                    .sort(
+                      (a, b) =>
+                        a.participation_rate - b.participation_rate ||
+                        b.missed_attacks - a.missed_attacks
+                    );
+
                   const byMvp = [...stats]
                     .map((s) => {
                       const score =
-                        s.total_wins * 2 + s.total_def_wins - s.total_losses;
-                      return { ...s, _score: score } as MemberStats & {
-                        _score: number;
-                      };
+                        s.total_wins * 2 +
+                        s.total_def_wins -
+                        s.total_losses -
+                        s.missed_attacks;
+                      return { ...s, _score: score };
                     })
                     .sort((a, b) => b._score - a._score);
 
@@ -1489,11 +1646,72 @@ export default function GuildWarClient() {
                     );
                   const lossMagnet = lossMagnetCandidate[0] ?? intKing;
 
-                  const openGateEmperor = openGates[0];
+                  const ghostMember = byInactivity[0];
+                  const afkKing = byMissedAttacks[0];
 
-                  const perfect = [...stats]
-                    .filter((s) => s.win_rate === 100 && s.total_wins >= 5)
-                    .sort((a, b) => b.total_wins - a.total_wins);
+                  // Combined titles for Hall of Fame
+                  const perfectWarrior = [...stats]
+                    .filter(
+                      (s) =>
+                        s.total_wars >= 3 &&
+                        s.participation_rate >= 90 &&
+                        s.win_rate >= 70
+                    )
+                    .sort(
+                      (a, b) =>
+                        b.win_rate +
+                          b.participation_rate -
+                          (a.win_rate + a.participation_rate) ||
+                        b.total_wins - a.total_wins
+                    )[0];
+
+                  const allRounder = [...stats]
+                    .filter(
+                      (s) =>
+                        s.total_wars >= 3 && s.total_wins + s.total_losses >= 10
+                    )
+                    .map((s) => ({
+                      ...s,
+                      _allRounderScore:
+                        s.win_rate * 0.4 +
+                        s.participation_rate * 0.3 +
+                        (s.total_def_wins / s.total_wars) * 10 * 0.3,
+                    }))
+                    .sort((a, b) => b._allRounderScore - a._allRounderScore)[0];
+
+                  // Combined titles for Hall of Shame
+                  const deadWeight = [...byMvp]
+                    .filter((s) => s.total_wars >= 2)
+                    .map((s) => ({
+                      ...s,
+                      _deadWeightScore:
+                        (s as any)._score - s.participation_rate,
+                    }))
+                    .sort((a, b) => a._deadWeightScore - b._deadWeightScore)[0];
+
+                  const freeWin = [...stats]
+                    .filter(
+                      (s) =>
+                        s.total_wars >= 3 && s.total_wins + s.total_losses >= 10
+                    )
+                    .map((s) => ({
+                      ...s,
+                      _freeWinScore: s.total_losses * 2 - s.total_def_wins,
+                    }))
+                    .sort((a, b) => b._freeWinScore - a._freeWinScore)[0];
+
+                  const wastedSlot = [...stats]
+                    .filter(
+                      (s) =>
+                        s.total_wars >= 3 &&
+                        s.participation_rate >= 60 &&
+                        s.win_rate < 40
+                    )
+                    .sort(
+                      (a, b) =>
+                        a.win_rate - b.win_rate ||
+                        b.total_losses - a.total_losses
+                    )[0];
 
                   const renderTopList = (
                     title: string,
@@ -1688,7 +1906,7 @@ export default function GuildWarClient() {
 
                         {renderTopList(
                           "MVP Score",
-                          "Score = Wins×2 + DefWins − Losses",
+                          "Score = Wins×2 + DefWins − Losses − MissedAttacks",
                           byMvp.map((s) => {
                             const score = (
                               s as MemberStats & { _score: number }
@@ -1696,8 +1914,8 @@ export default function GuildWarClient() {
                             return {
                               key: s.member_name,
                               primary: s.member_name,
-                              secondary: `${s.total_wins}W • ${s.total_def_wins} DW • ${s.total_losses}L`,
-                              right: `${score}`,
+                              secondary: `${s.total_wins}W • ${s.total_def_wins} DW • ${s.total_losses}L • ${s.missed_attacks} missed`,
+                              right: score > 0 ? `+${score}` : `${score}`,
                             };
                           })
                         )}
@@ -1713,9 +1931,7 @@ export default function GuildWarClient() {
                               key: s.member_name,
                               primary: s.member_name,
                               secondary: `${s.total_wins}W • ${s.total_def_wins} DW • ${s.total_losses}L`,
-                              right: (
-                                <span className="text-rose-300">{score}</span>
-                              ),
+                              right: score > 0 ? `+${score}` : `${score}`,
                             };
                           })
                         )}
@@ -1777,35 +1993,60 @@ export default function GuildWarClient() {
                             right: "0 DW",
                           }))
                         )}
-                      </div>
 
-                      {perfect.length > 0 ? (
-                        <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
-                          <h3 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tight">
-                            Perfect{" "}
-                            <span className="text-emerald-400">Warriors</span>
-                          </h3>
-                          <p className="text-slate-400 font-semibold mt-1">
-                            100% win rate (min 5 wins)
-                          </p>
-                          <div className="mt-6 flex flex-wrap gap-3">
-                            {perfect.map((s) => (
-                              <div
-                                key={s.member_name}
-                                className="px-4 py-2 rounded-xl border border-white/10 bg-slate-900/40 glass"
-                              >
-                                <div className="font-black text-white">
-                                  {s.member_name}
-                                </div>
-                                <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                                  {s.total_wins}-{s.total_losses} •{" "}
-                                  {s.total_wins + s.total_losses} attacks
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
+                        {renderTopList(
+                          "Most Missed Attacks",
+                          "Total attacks skipped (5 expected per war, min 3 wars)",
+                          byMissedAttacks.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${s.total_wins + s.total_losses}/${
+                              s.total_wars * 5
+                            } attacks • ${s.participation_rate.toFixed(
+                              0
+                            )}% participation`,
+                            right: (
+                              <span className="text-orange-300">
+                                {s.missed_attacks} missed
+                              </span>
+                            ),
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "Lowest Participation",
+                          "Worst participation rate (min 3 wars)",
+                          byParticipation.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${s.total_wins + s.total_losses}/${
+                              s.total_wars * 5
+                            } attacks • ${s.missed_attacks} missed`,
+                            right: (
+                              <span className="text-rose-300">
+                                {s.participation_rate.toFixed(0)}%
+                              </span>
+                            ),
+                          }))
+                        )}
+
+                        {renderTopList(
+                          "Most Inactive",
+                          "Below 80% participation (min 2 wars)",
+                          byInactivity.map((s) => ({
+                            key: s.member_name,
+                            primary: s.member_name,
+                            secondary: `${s.total_wins + s.total_losses}/${
+                              s.total_wars * 5
+                            } attacks made`,
+                            right: (
+                              <span className="text-rose-400">
+                                {s.participation_rate.toFixed(0)}% active
+                              </span>
+                            ),
+                          }))
+                        )}
+                      </div>
 
                       {stats.length > 0 ? (
                         <div className="bg-slate-950/15 glass p-6 md:p-8 rounded-[2rem] border-2 border-white/10">
@@ -1939,6 +2180,58 @@ export default function GuildWarClient() {
                               </div>
                             </div>
                           </div>
+
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="px-5 py-4 rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 to-slate-950/10">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-cyan-300">
+                                Perfect Warrior
+                              </div>
+                              <div className="mt-1 font-black text-white">
+                                {perfectWarrior?.member_name ?? "—"}
+                              </div>
+                              {perfectWarrior ? (
+                                <div className="text-xs font-bold text-slate-300 mt-1">
+                                  <span className="text-emerald-300">
+                                    {perfectWarrior.win_rate.toFixed(0)}% WR
+                                  </span>
+                                  {" • "}
+                                  <span className="text-cyan-300">
+                                    {perfectWarrior.participation_rate.toFixed(
+                                      0
+                                    )}
+                                    % Active
+                                  </span>
+                                </div>
+                              ) : null}
+                              <div className="text-xs font-bold text-slate-400 mt-1">
+                                {perfectWarrior
+                                  ? `High activity + strong performance`
+                                  : "Not enough data yet."}
+                              </div>
+                            </div>
+
+                            <div className="px-5 py-4 rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 to-slate-950/10">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-indigo-300">
+                                All-Rounder
+                              </div>
+                              <div className="mt-1 font-black text-white">
+                                {allRounder?.member_name ?? "—"}
+                              </div>
+                              {allRounder ? (
+                                <div className="text-xs font-bold text-slate-300 mt-1">
+                                  {allRounder.win_rate.toFixed(0)}% WR •{" "}
+                                  {allRounder.participation_rate.toFixed(0)}%
+                                  Active • {allRounder.avg_def_wins.toFixed(1)}{" "}
+                                  avg DW
+                                </div>
+                              ) : null}
+                              <div className="text-xs font-bold text-slate-400 mt-1">
+                                {allRounder
+                                  ? `Balanced excellence across all stats`
+                                  : "Not enough data yet."}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       ) : null}
 
@@ -2040,23 +2333,135 @@ export default function GuildWarClient() {
                             </div>
                           </div>
 
-                          {openGateEmperor ? (
-                            <div className="mt-4 px-5 py-4 rounded-2xl border border-white/10 bg-slate-900/35 glass">
-                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                Bonus Title
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="relative overflow-hidden rounded-2xl border border-slate-500/25 bg-gradient-to-br from-slate-500/10 to-slate-950/10 p-5">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                                Ghost Member
                               </div>
-                              <div className="mt-1 font-black text-white">
-                                Open Gate Emperor:{" "}
-                                <span className="text-orange-200">
-                                  {openGateEmperor.member_name}
-                                </span>
+                              <div className="mt-1 text-xl font-black text-white truncate">
+                                {ghostMember?.member_name ?? "—"}
                               </div>
-                              <div className="text-xs font-bold text-slate-400 mt-1">
-                                0 defense wins across{" "}
-                                {openGateEmperor.total_wars} wars
+                              {ghostMember ? (
+                                <div className="mt-2 text-xs font-bold text-slate-300">
+                                  <span className="text-slate-400">
+                                    Participation:
+                                  </span>{" "}
+                                  <span className="text-rose-300">
+                                    {ghostMember.participation_rate.toFixed(0)}%
+                                  </span>
+                                </div>
+                              ) : null}
+                              <div className="mt-3 text-sm font-black text-slate-200">
+                                {ghostMember
+                                  ? `${ghostMember.missed_attacks} missed attacks`
+                                  : "No data"}
                               </div>
                             </div>
-                          ) : null}
+
+                            <div className="relative overflow-hidden rounded-2xl border border-purple-500/25 bg-gradient-to-br from-purple-500/10 to-slate-950/10 p-5">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-purple-200">
+                                AFK King
+                              </div>
+                              <div className="mt-1 text-xl font-black text-white truncate">
+                                {afkKing?.member_name ?? "—"}
+                              </div>
+                              {afkKing ? (
+                                <div className="mt-2 text-xs font-bold text-slate-300">
+                                  <span className="text-slate-400">Made:</span>{" "}
+                                  {afkKing.total_wins + afkKing.total_losses}/
+                                  {afkKing.total_wars * 5} attacks
+                                </div>
+                              ) : null}
+                              <div className="mt-3 text-sm font-black text-purple-100">
+                                {afkKing
+                                  ? `${afkKing.missed_attacks} skipped`
+                                  : "No data"}
+                              </div>
+                            </div>
+
+                            <div className="relative overflow-hidden rounded-2xl border border-red-600/25 bg-gradient-to-br from-red-600/10 to-slate-950/10 p-5">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-red-300">
+                                Dead Weight
+                              </div>
+                              <div className="mt-1 text-xl font-black text-white truncate">
+                                {deadWeight?.member_name ?? "—"}
+                              </div>
+                              {deadWeight ? (
+                                <div className="mt-2 text-xs font-bold text-slate-300">
+                                  <span className="text-rose-300">
+                                    Score: {(deadWeight as any)._score}
+                                  </span>
+                                  {" • "}
+                                  <span className="text-orange-300">
+                                    {deadWeight.participation_rate.toFixed(0)}%
+                                    Active
+                                  </span>
+                                </div>
+                              ) : null}
+                              <div className="mt-3 text-sm font-black text-red-200">
+                                {deadWeight
+                                  ? `Low MVP + low activity`
+                                  : "No data"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="px-5 py-4 rounded-2xl border border-pink-500/20 bg-gradient-to-br from-pink-500/10 to-slate-950/10">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-pink-300">
+                                Free Win
+                              </div>
+                              <div className="mt-1 font-black text-white">
+                                {freeWin?.member_name ?? "—"}
+                              </div>
+                              {freeWin ? (
+                                <div className="text-xs font-bold text-slate-300 mt-1">
+                                  <span className="text-rose-300">
+                                    {freeWin.total_losses}L
+                                  </span>
+                                  {" • "}
+                                  <span className="text-slate-400">
+                                    {freeWin.total_def_wins} DW
+                                  </span>
+                                </div>
+                              ) : null}
+                              <div className="text-xs font-bold text-slate-400 mt-1">
+                                {freeWin
+                                  ? `Many losses + weak defense`
+                                  : "Not enough data yet."}
+                              </div>
+                            </div>
+
+                            <div className="px-5 py-4 rounded-2xl border border-amber-600/20 bg-gradient-to-br from-amber-600/10 to-slate-950/10">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">
+                                Wasted Slot
+                              </div>
+                              <div className="mt-1 font-black text-white">
+                                {wastedSlot?.member_name ?? "—"}
+                              </div>
+                              {wastedSlot ? (
+                                <div className="text-xs font-bold text-slate-300 mt-1">
+                                  <span
+                                    className={winRateColor(
+                                      wastedSlot.win_rate
+                                    )}
+                                  >
+                                    {wastedSlot.win_rate.toFixed(0)}% WR
+                                  </span>
+                                  {" • "}
+                                  <span className="text-slate-400">
+                                    {wastedSlot.participation_rate.toFixed(0)}%
+                                    Active
+                                  </span>
+                                </div>
+                              ) : null}
+                              <div className="text-xs font-bold text-slate-400 mt-1">
+                                {wastedSlot
+                                  ? `Active but terrible performance`
+                                  : "Not enough data yet."}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       ) : null}
                     </>
